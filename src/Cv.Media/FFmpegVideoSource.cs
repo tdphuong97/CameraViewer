@@ -72,6 +72,10 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private bool _reanchor;
     private bool _gotHwFrame;
     private int _decodeErrors;
+    // Packets before the first keyframe of a connection only decode to grey/smeared pictures: drop them, but stop
+    // waiting after ~30 s worth so a stream that never flags keyframes still shows something.
+    private const int MaxPacketsBeforeKey = 450;
+    private int _packetsBeforeKey; // -1 once a keyframe was seen
     private long _firstMedia = long.MinValue;
     private long _lastRel;
     private long _frameTicks = TimeSpan.TicksPerSecond / 25;
@@ -245,6 +249,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         _firstMedia = long.MinValue;
         _rate.Reset();
         _decodeErrors = 0;
+        _packetsBeforeKey = 0;
 
         while (true)
         {
@@ -280,6 +285,15 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
                 continue;
             }
             _rate.AddBytes(_pkt->size);
+            if (_packetsBeforeKey >= 0)
+            {
+                if ((_pkt->flags & ffmpeg.AV_PKT_FLAG_KEY) == 0 && ++_packetsBeforeKey <= MaxPacketsBeforeKey)
+                {
+                    ffmpeg.av_packet_unref(_pkt);
+                    continue;
+                }
+                _packetsBeforeKey = -1;
+            }
             r = ffmpeg.avcodec_send_packet(_dec, _pkt);
             ffmpeg.av_packet_unref(_pkt);
             if (r < 0 && r != FFmpegError.EAgain)
