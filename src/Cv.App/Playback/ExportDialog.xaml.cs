@@ -86,6 +86,8 @@ public partial class ExportDialog : UserControl
 
     void OnCancel(object sender, RoutedEventArgs e) => _shell.CloseModal();
 
+    internal void TestSave() => OnSave(this, new RoutedEventArgs());
+
     void OnSave(object sender, RoutedEventArgs e)
     {
         var t = Times();

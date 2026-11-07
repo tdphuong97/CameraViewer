@@ -82,6 +82,18 @@ public partial class LiveView : UserControl, IPage
         return true;
     }
 
+    // ---- Self-test hooks (demo --selftest drives the same paths a click would) ----
+
+    internal IReadOnlyList<ChannelInfo> TestOrder => _ordered;
+    internal bool TestInSingle => _single is not null;
+    internal bool TestSingleHasFrame => SingleTile.Video.HasFrame;
+    internal Cv.Core.Video.IVideoSource? TestSingleSource => SingleTile.Source;
+    internal void TestEnterSingle(int slot) { if (_tiles[slot].Camera is { } c) EnterSingle(c); }
+    internal void TestLayout(int size) { _s.Settings.LiveGrid = size; _page = 0; Rebuild(); }
+    internal void TestNextPage() => OnNextPage(this, new RoutedEventArgs());
+    internal void TestSwap(int a, int b) => Swap(a, b);
+    internal int TestPageCount => GridLayout.PageCount(_ordered.Count, _size);
+
     /// <summary>Capture mode: the hover buttons of the first tile.</summary>
     internal void ShowHoverOnFirstTile()
     {

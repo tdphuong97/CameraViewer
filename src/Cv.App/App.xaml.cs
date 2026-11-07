@@ -35,7 +35,7 @@ public partial class App : Application
             ex.SetObserved();
         };
 
-        if (!o.Capture && !TakeSingleInstance(o.Demo))
+        if (!o.Capture && !o.SelfTest && !TakeSingleInstance(o.Demo))
         {
             Shutdown();
             return;
@@ -78,15 +78,8 @@ public partial class App : Application
         _window = new MainWindow(_services);
         MainWindow = _window;
         _window.Closed += (_, _) => Shutdown();
-        if (o.Capture) CaptureMode.Prepare(_window, o);
+        if (o.Capture || o.SelfTest) CaptureMode.Prepare(_window, o);
         _window.Show();
-        if (o.Capture)
-        {
-            _ = CaptureMode.RunAsync(_window, o);
-            return;
-        }
-        _window.Start();
-        if (o.Updated) _window.Toast($"Đã cập nhật lên phiên bản {AppVersion.Current}.", ToastKind.Ok);
 
         // Low RAM: hand back the start-up garbage once the first screen is up.
         Dispatcher.BeginInvoke(() =>
@@ -94,6 +87,19 @@ public partial class App : Application
             GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect();
         }, DispatcherPriority.ApplicationIdle);
+        if (o.Capture)
+        {
+            _ = CaptureMode.RunAsync(_window, o);
+            return;
+        }
+        if (o.SelfTest)
+        {
+            _ = Demo.DemoSelfTest.RunAsync(_window);
+            return;
+        }
+        _window.Start();
+        if (o.Updated) _window.Toast($"Đã cập nhật lên phiên bản {AppVersion.Current}.", ToastKind.Ok);
+
     }
 
     /// <summary>Second launch: wake the first window and leave. Demo and CV_DATA copies get their own names.</summary>

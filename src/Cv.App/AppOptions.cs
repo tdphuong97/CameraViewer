@@ -10,6 +10,8 @@ public sealed class AppOptions
 {
     public bool Demo { get; private init; }
     public bool Updated { get; private init; }
+    /// <summary>Demo only: scripted walk through every screen, results in the log, exit code = failures.</summary>
+    public bool SelfTest { get; private init; }
     public string? CaptureFile { get; private init; }
     public string View { get; private init; } = "live";
     public int Width { get; private init; } = 1600;
@@ -20,7 +22,7 @@ public sealed class AppOptions
 
     public static AppOptions Parse(IReadOnlyList<string> args)
     {
-        bool demo = false, updated = false;
+        bool demo = false, updated = false, selfTest = false;
         string? file = null;
         string view = "live";
         int w = 1600, h = 900;
@@ -33,6 +35,7 @@ public sealed class AppOptions
             {
                 case "--demo": demo = true; break;
                 case "--updated": updated = true; break;
+                case "--selftest": selfTest = true; break;
                 case "--capture": file = Next(); break;
                 case "--view": view = (Next() ?? "live").ToLowerInvariant(); break;
                 case "--delay":
@@ -49,6 +52,6 @@ public sealed class AppOptions
                     break;
             }
         }
-        return new AppOptions { Demo = demo, Updated = updated, CaptureFile = file, View = view, Width = w, Height = h, DelaySeconds = delay };
+        return new AppOptions { Demo = demo, Updated = updated, SelfTest = selfTest && demo, CaptureFile = file, View = view, Width = w, Height = h, DelaySeconds = delay };
     }
 }

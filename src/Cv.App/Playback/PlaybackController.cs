@@ -255,6 +255,18 @@ public sealed class PlaybackController
         return at;
     }
 
+    /// <summary>The recorder changed: forget camera, day and spans.</summary>
+    public void Reset()
+    {
+        Stop();
+        Camera = null;
+        Spans = [];
+        _span = null;
+        _timeModeFor = null;
+        _view.ClearPicture();
+        Set(PlaybackStatus.Idle, null);
+    }
+
     public void Stop()
     {
         _loadCts?.Cancel();

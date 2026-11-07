@@ -86,7 +86,7 @@ public partial class MainWindow : Window, IShell
         SourceInitialized += (_, _) => Native.DarkTitleBar(this, 0x171A21, 0xE6E8EC);
         StateChanged += OnWindowStateChanged;
         PreviewKeyDown += OnPreviewKeyDown;
-        Closing += (_, _) => SaveBounds();
+        Closing += OnClosing;
         Closed += (_, _) => Shutdown();
     }
 
@@ -246,7 +246,7 @@ public partial class MainWindow : Window, IShell
         try
         {
             var path = await Snapshots.SaveAsync(source, _s.Settings.SnapshotFolder, cameraName, when);
-            Toast("Đã lưu ảnh " + System.IO.Path.GetFileName(path), ToastKind.Ok, "Mở ảnh", () => ShowError(Shell.OpenFile(path)));
+            Toast($"Đã chụp ảnh {cameraName}.", ToastKind.Ok, "Mở ảnh", () => ShowError(Shell.OpenFile(path)));
         }
         catch (InvalidOperationException ex)
         {
@@ -421,6 +421,22 @@ public partial class MainWindow : Window, IShell
         Width = b.Width;
         Height = b.Height;
         if (b.Maximized) WindowState = WindowState.Maximized;
+    }
+
+    void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!CaptureMode.Active && SafeJobs().Any(j => j.Status is ExportStatus.Queued or ExportStatus.Downloading or ExportStatus.Converting))
+        {
+            var answer = MessageBox.Show(this,
+                "Phần mềm đang lưu video. Nếu đóng bây giờ, video đang lưu sẽ bị hủy.\n\nVẫn đóng phần mềm?",
+                "Camera", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes)
+            {
+                e.Cancel = true;
+                return;
+            }
+        }
+        SaveBounds();
     }
 
     void SaveBounds()

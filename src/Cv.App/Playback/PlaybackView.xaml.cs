@@ -48,8 +48,10 @@ public partial class PlaybackView : UserControl, IPage
         _ctrl.Changed += OnChanged;
         _s.NvrChanged += () =>
         {
-            _ctrl.Stop();
+            _ctrl.Reset();
+            _resumeAt = null;
             CameraBox.ItemsSource = null;
+            if (_active) _ = ActivateAsync();
         };
         UpdateRange();
         UpdateZoomButtons();
@@ -346,7 +348,13 @@ public partial class PlaybackView : UserControl, IPage
         _shell.ShowModal(dialog);
     }
 
-    // ---- Capture mode ----
+    // ---- Self-test and capture hooks ----
+
+    internal PlaybackController TestController => _ctrl;
+    internal (DateTime? Start, DateTime? End) TestRange => (_rangeStart, _rangeEnd);
+    internal void TestMarkStart() => OnMarkStart(this, new RoutedEventArgs());
+    internal void TestMarkEnd() => OnMarkEnd(this, new RoutedEventArgs());
+    internal void TestTogglePause() => OnPlayPause(this, new RoutedEventArgs());
 
     /// <summary>Screenshots: shows a marked range around the playhead once playback runs.</summary>
     internal void PresetForCapture() => _capturePreset = true;
