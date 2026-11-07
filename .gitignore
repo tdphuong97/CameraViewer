@@ -1,0 +1,14 @@
+bin/
+obj/
+dist/
+.vs/
+*.user
+third_party/
+tools/mock/bin/
+tools/mock/data/
+probe-report-*
+TestResults/
+
+# Plan workspace and design docs, never commit
+docs/superpowers/
+.superpowers/

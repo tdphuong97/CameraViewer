@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>CameraViewer</AssemblyName>
+    <RootNamespace>Cv.App</RootNamespace>
+    <Version>0.9.0</Version>
+    <Product>Camera Viewer</Product>
+    <ApplicationIcon>Assets\cv.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Keeps RAM low: no tiered PGO JIT buffers, concurrent GC off. Track C may tune further with measurements. -->
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cv.Core\Cv.Core.csproj" />
+    <ProjectReference Include="..\Cv.Media\Cv.Media.csproj" />
+    <ProjectReference Include="..\Cv.Diagnostics\Cv.Diagnostics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\cv.ico" />
+  </ItemGroup>
+
+</Project>

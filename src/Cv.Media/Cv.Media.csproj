@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Cv.Media</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" Version="9.0.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cv.Core\Cv.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cv.Media.Tests" />
+  </ItemGroup>
+
+  <!-- FFmpeg DLLs (build\fetch-dev-tools.ps1, once per machine) land in <output>\ffmpeg\ of this project and of every project referencing it. -->
+  <ItemGroup>
+    <None Include="$(FFmpegBinDir)*.dll" Link="ffmpeg\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="WarnMissingFFmpeg" BeforeTargets="Build" Condition="!Exists('$(FFmpegBinDir)')">
+    <Warning Text="FFmpeg DLLs missing in $(FFmpegBinDir): run  powershell -ExecutionPolicy Bypass -File build\fetch-dev-tools.ps1  once on this machine." />
+  </Target>
+
+</Project>

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <!-- Third-party dev tools fetched once per machine by build\fetch-dev-tools.ps1 (never committed). -->
+    <CvDevTools>$(LOCALAPPDATA)\CameraViewer-dev\</CvDevTools>
+    <FFmpegBinDir>$(CvDevTools)ffmpeg\bin\</FFmpegBinDir>
+  </PropertyGroup>
+</Project>
