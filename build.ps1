@@ -67,4 +67,9 @@ if ($LASTEXITCODE) { throw 'Installer build failed.' }
 Get-ChildItem "dist\CameraViewer-Setup-$version.exe" |
     Format-Table Name, @{ n = 'MB'; e = { [math]::Round($_.Length / 1MB, 1) } } -AutoSize
 
+# Keep the newest installer and the two before it; older ones only fill the disk.
+Get-ChildItem dist -Filter 'CameraViewer-Setup-*.exe' |
+    Sort-Object { [version]($_.BaseName -replace '^CameraViewer-Setup-', '') } -Descending |
+    Select-Object -Skip 3 | ForEach-Object { "Removing old $($_.Name)"; Remove-Item $_.FullName }
+
 if ($Publish) { & .\build\publish.ps1 }
