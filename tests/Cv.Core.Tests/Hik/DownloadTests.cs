@@ -121,6 +121,28 @@ public class DownloadTests : IDisposable
     }
 
     [Fact]
+    public async Task Forced_method_has_no_fallback_and_leaves_the_remembered_method_alone()
+    {
+        var f = Recorder();
+        f.Download = (s, _) => FakeRecorder.PlaybackUriOf(s.Body).Contains("name=")
+            ? FakeIsapiHandler.Bytes(Samples.Ps())
+            : FakeRecorder.Xml(Samples.NotSupported);
+        using var c = f.Client();
+        var diag = Assert.IsAssignableFrom<INvrDiagnostics>(c);
+
+        await Assert.ThrowsAsync<NvrDownloadUnsupportedException>(() =>
+            diag.DownloadWithAsync(DownloadMethod.ByTime, 1, From, To, _dir.Path, null, default));
+        Assert.All(f.Downloads, d => Assert.DoesNotContain("name=", d.Uri)); // no fallback to segment methods
+        Assert.Empty(Files());
+
+        var parts = await diag.DownloadWithAsync(DownloadMethod.BySegmentWhole, 1, From, To, _dir.Path, null, default);
+        Assert.All(parts, p => Assert.Equal(DownloadMethod.BySegmentWhole, p.Method));
+        Assert.Null(diag.WorkingMethod);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            diag.DownloadWithAsync(DownloadMethod.RtspRecord, 1, From, To, _dir.Path, null, default));
+    }
+
+    [Fact]
     public async Task Http_errors_and_empty_bodies_are_refusals_too()
     {
         var f = Recorder();

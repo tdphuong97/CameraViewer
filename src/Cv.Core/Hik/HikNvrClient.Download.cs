@@ -17,9 +17,19 @@ internal sealed partial class HikNvrClient
     private Attempt? _working; // the method (and verb) that worked last on this recorder
 
     /// <summary>The method that worked last, if any (for the log and tests).</summary>
-    internal DownloadMethod? WorkingMethod { get { lock (_methodLock) return _working?.Method; } }
+    public DownloadMethod? WorkingMethod { get { lock (_methodLock) return _working?.Method; } }
 
-    public async Task<IReadOnlyList<DownloadedPart>> DownloadAsync(int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct)
+    public Task<IReadOnlyList<DownloadedPart>> DownloadAsync(int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct) =>
+        DownloadCoreAsync(null, channel, from, to, folder, bytes, ct);
+
+    public Task<IReadOnlyList<DownloadedPart>> DownloadWithAsync(DownloadMethod method, int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct)
+    {
+        if (method == DownloadMethod.RtspRecord) throw new ArgumentException("RtspRecord is not an ISAPI method.", nameof(method));
+        return DownloadCoreAsync(method, channel, from, to, folder, bytes, ct);
+    }
+
+    /// <summary>only = null: every method in order, starting with the one that worked last. only set: that method alone, remembered method untouched.</summary>
+    private async Task<IReadOnlyList<DownloadedPart>> DownloadCoreAsync(DownloadMethod? only, int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct)
     {
         if (to <= from) throw new ArgumentException("Thời điểm kết thúc phải sau thời điểm bắt đầu.", nameof(to));
         var mode = await ResolveTimeModeAsync(ct);
@@ -54,7 +64,8 @@ internal sealed partial class HikNvrClient
         Attempt? working;
         lock (_methodLock) working = _working;
         var order = new List<DownloadMethod> { DownloadMethod.ByTime, DownloadMethod.BySegmentRange, DownloadMethod.BySegmentWhole };
-        if (working is not null) { order.Remove(working.Method); order.Insert(0, working.Method); }
+        if (only is { } forced) order = [forced];
+        else if (working is not null) { order.Remove(working.Method); order.Insert(0, working.Method); }
 
         var reasons = new List<string>();
         foreach (var method in order)
@@ -63,7 +74,7 @@ internal sealed partial class HikNvrClient
             var verbs = working?.Method == method && working.Verb == HttpMethod.Post
                 ? new[] { HttpMethod.Post, HttpMethod.Get }
                 : new[] { HttpMethod.Get, HttpMethod.Post };
-            var parts = await TryMethodAsync(method, verbs, plan, channel, from, folder, bytes, reasons, ct);
+            var parts = await TryMethodAsync(method, verbs, plan, channel, from, folder, bytes, reasons, remember: only is null, ct);
             if (parts is not null) return parts;
         }
         Log.Warn($"Download ch{channel} {from:yyyy-MM-dd HH:mm:ss}-{to:HH:mm:ss}: no ISAPI method worked: {string.Join(" | ", reasons)}");
@@ -72,7 +83,7 @@ internal sealed partial class HikNvrClient
 
     /// <summary>Downloads every part with one method; null (and no file left) when the recorder refuses it.</summary>
     private async Task<IReadOnlyList<DownloadedPart>?> TryMethodAsync(DownloadMethod method, HttpMethod[] verbs, List<PartPlan> plan,
-        int channel, DateTime from, string folder, IProgress<long>? bytes, List<string> reasons, CancellationToken ct)
+        int channel, DateTime from, string folder, IProgress<long>? bytes, List<string> reasons, bool remember, CancellationToken ct)
     {
         var written = new List<string>();
         var parts = new List<DownloadedPart>(plan.Count);
@@ -107,7 +118,7 @@ internal sealed partial class HikNvrClient
             DeleteAll(written);
             throw;
         }
-        lock (_methodLock) _working = new Attempt(method, verb!);
+        if (remember) lock (_methodLock) _working = new Attempt(method, verb!);
         Log.Info($"Download ch{channel}: {method} via {verb!.Method}, {parts.Count} part(s), {done} bytes");
         return parts;
     }
