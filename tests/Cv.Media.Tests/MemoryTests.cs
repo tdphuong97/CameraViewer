@@ -66,6 +66,7 @@ public class MemoryTests(ITestOutputHelper output)
             await Scenario("1 x 1920x1080 H.265 -> 1600x900, software", 1, Url("main1080", "main1080.mp4"), HwDecodeMode.Off, 1600, 900);
             await Scenario("1 x 1920x1080 H.265 -> 1600x900, Auto (D3D11VA)", 1, Url("main1080", "main1080.mp4"), HwDecodeMode.Auto, 1600, 900);
             await Cycles("open/close 20 x 640x360 tiles, 6 cycles of 4 s", Url("sub", "sub640.mp4"), 6);
+            await Cycles("open/close 1 x 1920x1080 H.265 D3D11VA single view, 6 cycles of 4 s", Url("main1080", "main1080.mp4"), 6, count: 1, tw: 1600, th: 900);
         }
         finally
         {
@@ -73,14 +74,14 @@ public class MemoryTests(ITestOutputHelper output)
         }
     }
 
-    private async Task Cycles(string name, string url, int cycles)
+    private async Task Cycles(string name, string url, int cycles, int count = 20, int tw = 384, int th = 216)
     {
         using var factory = new FFmpegVideoSourceFactory();
         var mem = new List<string>();
         for (int c = 0; c < cycles; c++)
         {
-            var sources = Enumerable.Range(0, 20)
-                .Select(_ => factory.Create(new VideoSourceOptions { Url = url, IsLive = true, TargetWidth = 384, TargetHeight = 216 }))
+            var sources = Enumerable.Range(0, count)
+                .Select(_ => factory.Create(new VideoSourceOptions { Url = url, IsLive = true, TargetWidth = tw, TargetHeight = th }))
                 .ToList();
             foreach (var s in sources) s.Start();
             await Task.Delay(4000);

@@ -200,6 +200,7 @@ public class VideoSourceTests : IDisposable
         var snap = await hw.CaptureAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3));
         Assert.Equal((1920, 1080), (snap.Width, snap.Height));
         Assert.True(await Wait.ForState(hw, VideoState.Ended, 10));
+        Assert.False(_factory.HardwareDeviceCreated); // idle device dropped once its last decoder closed
     }
 
     [NativeFact]

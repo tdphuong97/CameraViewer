@@ -67,6 +67,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private string _codecLabel = "";
     private bool _hw;
     private bool _hwDisabled;
+    private bool _holdsHwDevice;
     private bool _everPlayed;
     private bool _reanchor;
     private bool _gotHwFrame;
@@ -359,6 +360,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             var dev = _factory.RefHardwareDevice();
             if (dev != null)
             {
+                _holdsHwDevice = true;
                 _dec->hw_device_ctx = dev; // the codec context owns this reference
                 _dec->thread_count = 1;
                 hw = true;
@@ -382,9 +384,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         if (r < 0 && hw)
         {
             Log.Warn("Hardware decoder open failed, using software: " + FFmpegError.Describe(r));
-            var d = _dec;
-            ffmpeg.avcodec_free_context(&d);
-            _dec = null;
+            FreeDecoder();
             _hwDisabled = true;
             return OpenDecoder(allowHw: false);
         }
@@ -392,6 +392,22 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         _gotHwFrame = false;
         _codecLabel = MediaUtil.CodecLabel(par->codec_id);
         return r;
+    }
+
+    /// <summary>Frees the decoder and hands the shared device reference back (the factory drops an idle device).</summary>
+    private void FreeDecoder()
+    {
+        if (_dec != null)
+        {
+            var d = _dec;
+            ffmpeg.avcodec_free_context(&d);
+            _dec = null;
+        }
+        if (_holdsHwDevice)
+        {
+            _holdsHwDevice = false;
+            _factory.ReleaseHardwareDevice();
+        }
     }
 
     private static bool SupportsD3D11(AVCodec* codec)
@@ -410,9 +426,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     {
         Log.Warn($"Hardware decoding dropped ({why}), using software: {Log.Redact(_opt.Url)}");
         _hwDisabled = true;
-        var d = _dec;
-        ffmpeg.avcodec_free_context(&d);
-        _dec = null;
+        FreeDecoder();
         _decodeErrors = 0;
         return OpenDecoder(allowHw: false) >= 0;
     }
@@ -744,12 +758,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
 
     private void CloseInput()
     {
-        if (_dec != null)
-        {
-            var d = _dec;
-            ffmpeg.avcodec_free_context(&d);
-            _dec = null;
-        }
+        FreeDecoder();
         if (_fmt != null)
         {
             // RTSP sends TEARDOWN here; bounded so a dead link cannot hold the thread.
