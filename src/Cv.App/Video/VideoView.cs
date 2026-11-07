@@ -148,6 +148,18 @@ public sealed class VideoView : FrameworkElement
     {
         base.OnRenderSizeChanged(info);
         InvalidateVisual();
+        ScheduleTargetSize();
+    }
+
+    // Moving to a monitor with another scale changes the device-pixel size without a layout resize.
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        ScheduleTargetSize();
+    }
+
+    void ScheduleTargetSize()
+    {
         if (_source is null) return;
         if (_resizeTimer is null)
         {
