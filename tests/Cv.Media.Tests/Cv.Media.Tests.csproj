@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +22,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cv.Media\Cv.Media.csproj" />
     <ProjectReference Include="..\..\src\Cv.Core\Cv.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Tiny committed test clips (see Assets\make-assets.ps1). -->
+  <ItemGroup>
+    <None Include="Assets\**\*.mp4;Assets\**\*.ts;Assets\**\*.h264;Assets\**\*.h265" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
