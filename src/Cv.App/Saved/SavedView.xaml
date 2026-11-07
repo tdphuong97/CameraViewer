@@ -1,0 +1,84 @@
+<UserControl x:Class="Cv.App.Saved.SavedView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Cv.App">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid MaxWidth="1080" Margin="32,26,32,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Video đã lưu" Style="{StaticResource H1}" />
+                <TextBlock x:Name="FolderText" Style="{StaticResource Muted}" FontSize="13.5" Margin="0,5,0,0" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ClearButton" Style="{StaticResource GhostButton}" app:Ui.Glyph="&#xE74D;" Content="Dọn danh sách"
+                        ToolTip="Bỏ các mục đã xong khỏi danh sách (video vẫn còn trong thư mục)" Click="OnClear" />
+                <Button app:Ui.Glyph="&#xE838;" Content="Mở thư mục video" Margin="8,0,0,0" Click="OnOpenFolder" />
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <ItemsControl x:Name="JobList" MaxWidth="1080" Margin="32,0,32,24" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="10" Padding="18,14" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="42" Height="42" CornerRadius="21" Background="{Binding GlyphBackground}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Glyph}" Style="{StaticResource Icon}" FontSize="17"
+                                               Foreground="{Binding GlyphBrush}" HorizontalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding CameraName}" FontSize="15" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding DayText}" Foreground="{StaticResource MutedBrush}" Margin="10,1,0,0" FontSize="13.5" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding RangeText}" Foreground="{StaticResource SubtleBrush}" Margin="0,3,0,0" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="13.5"
+                                                   TextWrapping="Wrap" MaxWidth="520" VerticalAlignment="Center" />
+                                        <ProgressBar Value="{Binding Progress, Mode=OneWay}" Width="220" Margin="14,0,0,0" VerticalAlignment="Center"
+                                                     Visibility="{Binding ProgressVisibility}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE768;" Content="Mở video"
+                                            Visibility="{Binding DoneVisibility}" Click="OnOpenVideo" />
+                                    <Button app:Ui.Glyph="&#xE838;" Content="Mở thư mục" Margin="8,0,0,0"
+                                            Visibility="{Binding DoneVisibility}" Click="OnShowInFolder" />
+                                    <Button app:Ui.Glyph="&#xE711;" app:Ui.GlyphSize="12" Content="Hủy" Visibility="{Binding CancelVisibility}"
+                                            Click="OnCancel" />
+                                    <Button app:Ui.Glyph="&#xE72C;" Content="Thử lại" Visibility="{Binding RetryVisibility}" Click="OnRetry" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel x:Name="EmptyPanel" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,80"
+                    Visibility="Collapsed">
+            <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource RaisedBrush}" HorizontalAlignment="Center">
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" FontSize="26" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Center" />
+            </Border>
+            <TextBlock Text="Chưa có video nào được lưu" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,16,0,6" />
+            <TextBlock Text="Vào Xem lại, đánh dấu đoạn cần lưu rồi bấm Lưu đoạn video." Style="{StaticResource Muted}" FontSize="14"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

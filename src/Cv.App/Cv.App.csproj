@@ -10,8 +10,12 @@
     <Product>Camera Viewer</Product>
     <ApplicationIcon>Assets\cv.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <!-- Keeps RAM low: no tiered PGO JIT buffers, concurrent GC off. Track C may tune further with measurements. -->
+    <!-- Demo frame drawing and LibraryImport interop. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Low RAM (measured, see report): workstation GC without the background GC thread, no tiered PGO instrumentation. -->
     <ServerGarbageCollector>false</ServerGarbageCollector>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
   </PropertyGroup>
 
   <ItemGroup>

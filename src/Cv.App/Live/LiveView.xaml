@@ -1,0 +1,79 @@
+<UserControl x:Class="Cv.App.Live.LiveView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Cv.App"
+             xmlns:live="clr-namespace:Cv.App.Live">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Grid of cameras -->
+        <Grid x:Name="TileGrid" Margin="6,6,6,4" />
+
+        <!-- One camera, main stream -->
+        <Grid x:Name="SinglePanel" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Margin="14,10,14,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button app:Ui.Glyph="&#xE72B;" Content="Tất cả camera" Click="OnBack" ToolTip="Quay lại (Esc)" />
+                <TextBlock x:Name="SingleName" Grid.Column="1" FontSize="18" FontWeight="SemiBold" Margin="18,0" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button app:Ui.Glyph="&#xE81C;" Content="Xem lại" Click="OnSinglePlayback" />
+                    <Button x:Name="SingleSnapshot" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh" Margin="8,0,0,0" Click="OnSingleSnapshot" />
+                </StackPanel>
+            </Grid>
+            <live:CameraTile x:Name="SingleTile" Grid.Row="1" Margin="14,0,14,14" IsSingle="True" />
+        </Grid>
+
+        <!-- Loading / error / not configured -->
+        <Border x:Name="MessagePanel" Style="{StaticResource Card}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="460" Padding="32,28" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="MessageIcon" Style="{StaticResource Icon}" FontSize="30" HorizontalAlignment="Center"
+                           Foreground="{StaticResource MutedBrush}" />
+                <TextBlock x:Name="MessageTitle" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,14,0,6" />
+                <TextBlock x:Name="MessageText" Style="{StaticResource Muted}" FontSize="14" TextAlignment="Center" />
+                <StackPanel x:Name="MessageButtons" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <Button app:Ui.Glyph="&#xE72C;" Content="Thử lại" Click="OnRetry" />
+                    <Button app:Ui.Glyph="&#xE713;" Content="Mở Cài đặt" Margin="8,0,0,0" Click="OnOpenSettings" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Bottom bar: count, layout, pages -->
+        <Border x:Name="BottomBar" Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0" Padding="18,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="CountText" Style="{StaticResource Muted}" VerticalAlignment="Center" FontSize="13.5" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="Bố cục" Style="{StaticResource Muted}" FontSize="13.5" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <Border Style="{StaticResource SegmentGroup}">
+                        <StackPanel x:Name="LayoutButtons" Orientation="Horizontal" />
+                    </Border>
+                </StackPanel>
+                <StackPanel x:Name="Pager" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                    <Button x:Name="PrevPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76B;" ToolTip="Trang trước"
+                            Click="OnPrevPage" />
+                    <TextBlock x:Name="PageText" VerticalAlignment="Center" Margin="10,0" Foreground="{StaticResource SubtleBrush}" />
+                    <Button x:Name="NextPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76C;" ToolTip="Trang sau"
+                            Click="OnNextPage" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
