@@ -124,6 +124,23 @@ public interface INvrClient : IDisposable
     Task<TimeMode> ResolveTimeModeAsync(CancellationToken ct);
 }
 
+/// <summary>
+/// Extra surface for the on-site probe. HikNvrClient implements it; callers test `client is INvrDiagnostics`.
+/// Added after the first contract freeze, as a separate interface so existing INvrClient fakes stay valid.
+/// </summary>
+public interface INvrDiagnostics
+{
+    /// <summary>The ISAPI download method that worked last on this recorder; null before any successful download.</summary>
+    DownloadMethod? WorkingMethod { get; }
+
+    /// <summary>
+    /// Like INvrClient.DownloadAsync with exactly one ISAPI method (ByTime, BySegmentRange or BySegmentWhole): no
+    /// fallback, and the remembered working method is left unchanged. Throws NvrDownloadUnsupportedException when the
+    /// recorder refuses that method.
+    /// </summary>
+    Task<IReadOnlyList<DownloadedPart>> DownloadWithAsync(DownloadMethod method, int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct);
+}
+
 public interface INvrClientFactory
 {
     INvrClient Create(NvrConfig config, string password);
