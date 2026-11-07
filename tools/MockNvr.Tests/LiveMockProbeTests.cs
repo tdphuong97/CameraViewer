@@ -38,7 +38,6 @@ public sealed class LiveMockProbeTests(ITestOutputHelper output)
         var password = s.GetProperty("password").GetString()!;
         var mode = s.GetProperty("download").GetString();
         var folder = Path.Combine(Path.GetTempPath(), "mocknvr-live-" + Guid.NewGuid().ToString("N")[..8]);
-        Log.Folder = Path.Combine(folder, "logs");
         try
         {
             var report = await new ProbeRunner(new HikNvrClientFactory(), new CliVideoFactory(), new CliMedia())

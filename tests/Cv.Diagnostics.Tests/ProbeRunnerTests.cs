@@ -21,7 +21,6 @@ public sealed class ProbeRunnerTests : IDisposable
     public ProbeRunnerTests()
     {
         Directory.CreateDirectory(_dir);
-        Log.Folder = Path.Combine(_dir, "logs");
     }
 
     public void Dispose()

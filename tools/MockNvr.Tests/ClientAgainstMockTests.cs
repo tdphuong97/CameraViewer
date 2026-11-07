@@ -176,7 +176,6 @@ public sealed class ClientAgainstMockTests(ITestOutputHelper output) : IDisposab
         {
             Timeouts = new ProbeTimeouts { Watch = TimeSpan.FromMilliseconds(30), Poll = TimeSpan.FromMilliseconds(2), MethodByteCap = 2L * 1024 * 1024 },
         };
-        Log.Folder = Path.Combine(_temp, "logs");
 
         var report = await runner.RunAsync(new NvrConfig { Host = "127.0.0.1", HttpPort = m.Port, User = "admin" }, Password, _temp, null, default);
 
