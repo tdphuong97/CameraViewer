@@ -475,6 +475,19 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         }
         if (_stopping) return -1;
 
+        // Position, stats and state first: whoever sees the frame also sees them.
+        _lastRel = rel;
+        long pos = _opt.IsLive
+            ? (long)((Stopwatch.GetTimestamp() - _liveStart) * (TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency))
+            : rel;
+        Interlocked.Exchange(ref _positionTicks, Math.Max(0, pos));
+        bool refreshed = _rate.AddFrame();
+        if (first || refreshed)
+        {
+            lock (_gate) _stats = new VideoStats(_codecLabel, src->width, src->height, _rate.Fps, _rate.Kbps, hwFrame);
+        }
+        if (first || State is not (VideoState.Playing or VideoState.Paused)) SetState(VideoState.Playing, null);
+
         Scale(src);
         // Keep the shown picture for capture and for re-scaling while paused.
         ffmpeg.av_frame_unref(_held);
@@ -485,18 +498,6 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _last = _held;
         }
         _hasFrame = true;
-        _lastRel = rel;
-        long pos = _opt.IsLive
-            ? (long)((Stopwatch.GetTimestamp() - _liveStart) * (TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency))
-            : rel;
-        Interlocked.Exchange(ref _positionTicks, Math.Max(0, pos));
-
-        bool refreshed = _rate.AddFrame();
-        if (first || refreshed)
-        {
-            lock (_gate) _stats = new VideoStats(_codecLabel, src->width, src->height, _rate.Fps, _rate.Kbps, hwFrame);
-        }
-        if (first || State is not (VideoState.Playing or VideoState.Paused)) SetState(VideoState.Playing, null);
         return 1;
     }
 
@@ -573,9 +574,12 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     /// <summary>Pending capture; re-scale of the shown picture when the box changed while nothing is decoding.</summary>
     private void Service()
     {
-        TaskCompletionSource<FrameSnapshot>? cap;
-        lock (_gate) { cap = _capture; _capture = null; }
-        if (cap != null) DoCapture(cap);
+        if (Volatile.Read(ref _capture) != null)
+        {
+            TaskCompletionSource<FrameSnapshot>? cap;
+            lock (_gate) { cap = _capture; _capture = null; }
+            if (cap != null) DoCapture(cap);
+        }
 
         if (_last != null && _hasFrame && Interlocked.Read(ref _targetSize) != _appliedTarget)
         {

@@ -27,18 +27,19 @@ public sealed class MediaMtx : IDisposable
         File.WriteAllText(yml, $"""
             logLevel: warn
             logDestinations: [stdout]
-            api: no
-            metrics: no
-            pprof: no
-            playback: no
-            rtsp: yes
+            api: false
+            metrics: false
+            pprof: false
+            playback: false
+            rtsp: true
             rtspTransports: [tcp]
             rtspAddress: 127.0.0.1:{Port}
             rtspAuthMethods: [{authMethod}]
-            rtmp: no
-            hls: no
-            webrtc: no
-            srt: no
+            rtmp: false
+            hls: false
+            webrtc: false
+            srt: false
+            moq: false
             authMethod: internal
             authInternalUsers:
               - user: {PubUser}
@@ -57,7 +58,12 @@ public sealed class MediaMtx : IDisposable
               all_others:
             """);
         _server = Start(TestEnv.MediaMtxExe, $"\"{yml}\"");
-        if (!WaitPort(Port, TimeSpan.FromSeconds(10))) throw new InvalidOperationException("MediaMTX did not start: " + Output(_server));
+        if (!WaitPort(Port, TimeSpan.FromSeconds(10)))
+        {
+            var log = Output(_server);
+            Kill(_server);
+            throw new InvalidOperationException("MediaMTX did not start: " + log);
+        }
     }
 
     /// <summary>rtsp URL for readers, password percent-encoded like the app does.</summary>

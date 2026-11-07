@@ -89,14 +89,15 @@ public class RtspErrorTests : IDisposable
     [NativeFact]
     public async Task Refused_connection_keeps_retrying_with_backoff()
     {
-        int port = TestEnv.FreeTcpPort(); // nothing listens there
-        var s = Live($"rtsp://admin:x@127.0.0.1:{port}/Streaming/Channels/102");
+        // Nothing listens there. FFmpeg on Windows does not see the refusal (WSAPoll), so this ends by the open deadline.
+        int port = TestEnv.FreeTcpPort();
+        var s = Live($"rtsp://admin:x@127.0.0.1:{port}/Streaming/Channels/102", openTimeout: 2);
         var states = new List<VideoState>();
         s.StateChanged += src => { lock (states) states.Add(src.State); };
         s.Start();
         Assert.True(await Wait.ForState(s, VideoState.Reconnecting, 8));
         Assert.Equal("Không kết nối được đầu ghi, đang thử lại…", s.Error);
-        await Task.Delay(3500); // 1 s + 2 s backoff: still trying, never Failed
+        await Task.Delay(6000); // further attempts (2 s each + 1, 2 s backoff): still trying, never Failed
         Assert.Equal(VideoState.Reconnecting, s.State);
         lock (states) Assert.DoesNotContain(VideoState.Failed, states);
     }
