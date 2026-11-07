@@ -117,7 +117,7 @@ internal sealed unsafe class Mp4Writer : IDisposable
         {
             AVFormatContext* oc = null;
             int r = ffmpeg.avformat_alloc_output_context2(&oc, null, "mp4", path);
-            if (r < 0 || oc == null) throw FFmpegError.ToException(r < 0 ? r : ffmpeg.AVERROR(ffmpeg.ENOMEM), "mp4 context");
+            if (r < 0 || oc == null) throw FFmpegError.ToException(r < 0 ? r : FFmpegError.ENoMem, "mp4 context");
             w._oc = oc;
             oc->interrupt_callback = irq.Native;
             w._tracks[0] = w.AddStream(video, isVideo: true);
@@ -131,7 +131,7 @@ internal sealed unsafe class Mp4Writer : IDisposable
             MediaUtil.Set(&o, "movflags", "+faststart");
             r = ffmpeg.avformat_write_header(oc, &o);
             ffmpeg.av_dict_free(&o);
-            if (r < 0) throw FFmpegError.ToException(r == ffmpeg.AVERROR(ffmpeg.EINVAL) ? ffmpeg.AVERROR_PATCHWELCOME : r, "mp4 header");
+            if (r < 0) throw FFmpegError.ToException(r == FFmpegError.EInval ? ffmpeg.AVERROR_PATCHWELCOME : r, "mp4 header");
             foreach (var t in w._tracks)
                 if (t != null) t.OutTb = oc->streams[t.Index]->time_base;
             return w;

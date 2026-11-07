@@ -157,7 +157,7 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
                     if (r >= 0 && irq.TimedOut) { ffmpeg.av_packet_unref(pkt); r = ffmpeg.AVERROR_EXIT; }
                 }
                 if (r == ffmpeg.AVERROR_EOF) break;
-                if (r == ffmpeg.AVERROR(ffmpeg.EAGAIN)) continue;
+                if (r == FFmpegError.EAgain) continue;
                 if (r < 0)
                 {
                     if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
@@ -275,7 +275,7 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
             {
                 ct.ThrowIfCancellationRequested();
                 r = ffmpeg.av_read_frame(ic, pkt);
-                if (r == ffmpeg.AVERROR(ffmpeg.EAGAIN)) continue;
+                if (r == FFmpegError.EAgain) continue;
                 if (r < 0) break; // EOF or damaged tail: use what was read
                 int si = pkt->stream_index;
                 AVStream* st = ic->streams[si];

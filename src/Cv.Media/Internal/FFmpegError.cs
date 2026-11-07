@@ -14,7 +14,10 @@ internal static unsafe class FFmpegError
     private const int WSAENETDOWN = 10050, WSAENETUNREACH = 10051, WSAECONNABORTED = 10053, WSAECONNRESET = 10054,
         WSAETIMEDOUT = 10060, WSAECONNREFUSED = 10061, WSAEHOSTDOWN = 10064, WSAEHOSTUNREACH = 10065;
 
-    public static int Averror(int errno) => -errno;
+    // ffmpeg.AVERROR<T>(T) is generic and boxes: per-frame code compares against these instead.
+    public static readonly int EAgain = -ffmpeg.EAGAIN;
+    public static readonly int ENoMem = -ffmpeg.ENOMEM;
+    public static readonly int EInval = -ffmpeg.EINVAL;
 
     public static string Describe(int code)
     {

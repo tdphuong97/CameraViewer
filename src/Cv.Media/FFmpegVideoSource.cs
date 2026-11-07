@@ -100,6 +100,10 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     /// <summary>Native bytes held by the BGRA buffers (tests, diagnostics).</summary>
     internal long FrameBufferBytes => _frames.AllocatedBytes;
 
+    /// <summary>Managed bytes the decoder thread has allocated so far, sampled per frame (tests: must not grow per frame).</summary>
+    internal long DecoderThreadAllocatedBytes => Interlocked.Read(ref _threadAllocated);
+    private long _threadAllocated;
+
     public void Start()
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
@@ -259,7 +263,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             if (r < 0)
             {
                 if (_stopping) return new Outcome(End.Stopped);
-                if (r == ffmpeg.AVERROR(ffmpeg.EAGAIN)) { _wake.WaitOne(10); continue; }
+                if (r == FFmpegError.EAgain) { _wake.WaitOne(10); continue; }
                 if (r == ffmpeg.AVERROR_EOF)
                 {
                     if (!Drain(ref hadFrames)) return new Outcome(End.Stopped);
@@ -277,7 +281,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _rate.AddBytes(_pkt->size);
             r = ffmpeg.avcodec_send_packet(_dec, _pkt);
             ffmpeg.av_packet_unref(_pkt);
-            if (r < 0 && r != ffmpeg.AVERROR(ffmpeg.EAGAIN))
+            if (r < 0 && r != FFmpegError.EAgain)
             {
                 _decodeErrors++;
                 // A hardware decoder that never produced a picture gets replaced by software.
@@ -292,7 +296,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private int OpenInput()
     {
         _fmt = ffmpeg.avformat_alloc_context();
-        if (_fmt == null) return ffmpeg.AVERROR(ffmpeg.ENOMEM);
+        if (_fmt == null) return FFmpegError.ENoMem;
         _irq.Attach(_fmt);
         AVDictionary* o = null;
         if (_isRtsp)
@@ -343,7 +347,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         AVCodec* codec = ffmpeg.avcodec_find_decoder(par->codec_id);
         if (codec == null) return ffmpeg.AVERROR_DECODER_NOT_FOUND;
         _dec = ffmpeg.avcodec_alloc_context3(codec);
-        if (_dec == null) return ffmpeg.AVERROR(ffmpeg.ENOMEM);
+        if (_dec == null) return FFmpegError.ENoMem;
         int r = ffmpeg.avcodec_parameters_to_context(_dec, par);
         if (r < 0) return r;
         _dec->pkt_timebase = st->time_base;
@@ -419,7 +423,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         while (true)
         {
             int r = ffmpeg.avcodec_receive_frame(_dec, _frame);
-            if (r == ffmpeg.AVERROR(ffmpeg.EAGAIN) || r == ffmpeg.AVERROR_EOF) return true;
+            if (r == FFmpegError.EAgain || r == ffmpeg.AVERROR_EOF) return true;
             if (r < 0) { _decodeErrors++; return true; }
             int shown = Present(_frame);
             if (shown < 0) return false;
@@ -515,6 +519,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _last = _held;
         }
         _hasFrame = true;
+        Interlocked.Exchange(ref _threadAllocated, GC.GetAllocatedBytesForCurrentThread());
         return 1;
     }
 

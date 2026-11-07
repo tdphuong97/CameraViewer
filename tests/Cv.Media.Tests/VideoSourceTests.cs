@@ -203,6 +203,28 @@ public class VideoSourceTests : IDisposable
     }
 
     [NativeFact]
+    public async Task Steady_decoding_allocates_no_managed_memory_per_frame()
+    {
+        // Paced playback of the 5 s clip: the window stays inside one open (opening allocates, frames must not).
+        var s = (FFmpegVideoSource)Open("h264.mp4", live: false, tw: 160, th: 90);
+        s.Start();
+        await Wait.NextFrame(s);
+        await Task.Delay(1000); // warm-up: first stats refresh, lazy bindings
+        long f0 = Seq(s), a0 = s.DecoderThreadAllocatedBytes;
+        await Task.Delay(3000);
+        long frames = Seq(s) - f0, bytes = s.DecoderThreadAllocatedBytes - a0;
+        Assert.InRange(frames, 40, 50);
+        Assert.True(bytes == 0, $"decoder thread allocated {bytes} bytes over {frames} frames");
+    }
+
+    private static long Seq(IVideoSource s)
+    {
+        long seq = 0;
+        s.TryCopyLatest(ref seq, static (_, _, _, _) => { });
+        return seq;
+    }
+
+    [NativeFact]
     public void Factory_requires_ffmpeg_and_validates_folder()
     {
         Assert.True(FFmpegRuntime.TryInitialize(out var err));
