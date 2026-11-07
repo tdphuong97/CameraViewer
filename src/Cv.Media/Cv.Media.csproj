@@ -20,7 +20,8 @@
 
   <!-- FFmpeg DLLs (build\fetch-dev-tools.ps1, once per machine) land in <output>\ffmpeg\ of this project and of every project referencing it. -->
   <ItemGroup>
-    <None Include="$(FFmpegBinDir)*.dll" Link="ffmpeg\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Visible="false" />
+    <!-- avfilter/avdevice are never used (35 MB): only avutil, avcodec, avformat, swscale, swresample ship. -->
+    <None Include="$(FFmpegBinDir)*.dll" Exclude="$(FFmpegBinDir)avfilter-*.dll;$(FFmpegBinDir)avdevice-*.dll" Link="ffmpeg\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Visible="false" />
   </ItemGroup>
 
   <Target Name="WarnMissingFFmpeg" BeforeTargets="Build" Condition="!Exists('$(FFmpegBinDir)')">
