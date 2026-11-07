@@ -16,6 +16,7 @@ public partial class CameraTile : UserControl
 {
     const string DragFormat = "Cv.App.TileSlot";
     Point? _pressAt;
+    bool _bound;
 
     public CameraTile()
     {
@@ -50,7 +51,8 @@ public partial class CameraTile : UserControl
     /// <summary>Shows a camera (or an empty slot). Keeps the open source when nothing changed.</summary>
     public void Bind(ChannelInfo? camera, StreamKind kind)
     {
-        if (Camera == camera && Kind == kind) return;
+        if (_bound && Camera == camera && Kind == kind) return;
+        _bound = true;
         Close();
         Camera = camera;
         Kind = kind;
@@ -138,6 +140,9 @@ public partial class CameraTile : UserControl
         OverlayText.Text = text;
         Overlay.Visibility = Visibility.Visible;
     }
+
+    /// <summary>Capture mode: shows the hover buttons without a mouse.</summary>
+    internal void ShowHover() => UpdateHover(true);
 
     void UpdateHover(bool over)
     {

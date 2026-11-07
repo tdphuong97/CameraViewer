@@ -56,7 +56,7 @@ internal static class Shell
     /// <summary>A file name made of the camera name and a time, safe for Windows, with " (2)" added when taken.</summary>
     public static string UniquePath(string folder, string baseName, string extension)
     {
-        foreach (var c in Path.GetInvalidFileNameChars()) baseName = baseName.Replace(c, '_');
+        baseName = Cv.Core.Export.ExportNaming.Sanitize(baseName);
         var path = Path.Combine(folder, baseName + extension);
         for (var i = 2; File.Exists(path); i++) path = Path.Combine(folder, $"{baseName} ({i}){extension}");
         return path;

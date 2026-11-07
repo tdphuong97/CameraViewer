@@ -74,7 +74,6 @@ public sealed class Services : IDisposable
         var media = new FFmpegMediaTools();
         var s = new Services(false, new SettingsStore(AppPaths.SettingsFile), new HikNvrClientFactory(), new FFmpegVideoSourceFactory(),
             media, http, Updater.ResolveFeed());
-        CleanTemp();
         s.Export = new ExportService(s.ClientFor, media, AppPaths.Temp);
         s.Init();
         return s;
@@ -83,8 +82,12 @@ public sealed class Services : IDisposable
     public static Services CreateDemo()
     {
         var http = new HttpClient(new DemoUpdateHandler()) { Timeout = TimeSpan.FromMinutes(2) };
-        var s = new Services(true, new DemoSettingsStore(), new DemoNvrClientFactory(), new DemoVideoSourceFactory(), new DemoMediaTools(),
+        // The real store on its own file: the demo never touches the real settings.
+        var store = new SettingsStore(Path.Combine(AppPaths.Data, "settings-demo.json"));
+        var s = new Services(true, store, new DemoNvrClientFactory(), new DemoVideoSourceFactory(), new DemoMediaTools(),
             http, DemoUpdateHandler.Feed);
+        if (s.Settings.Nvrs.Count == 0)
+            s.Settings.Nvrs.Add(new NvrConfig { Id = "demo", Name = "Đầu ghi", Host = "192.168.1.64", User = "admin" });
         s.Export = new DemoExportService(s.Settings.ExportFolder, DateTime.Now);
         s.Init();
         return s;
@@ -94,19 +97,6 @@ public sealed class Services : IDisposable
     {
         Export.JobChanged += _ => DisposeRetiredWhenIdle();
         CreateClient();
-    }
-
-    static void CleanTemp()
-    {
-        try
-        {
-            if (!Directory.Exists(AppPaths.Temp)) return;
-            foreach (var f in Directory.EnumerateFiles(AppPaths.Temp)) File.Delete(f);
-        }
-        catch (Exception ex)
-        {
-            Log.Warn("Temp folder not emptied", ex);
-        }
     }
 
     /// <summary>For the export queue (any thread): the live client of a recorder id.</summary>

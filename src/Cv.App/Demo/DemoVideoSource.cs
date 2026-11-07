@@ -291,18 +291,20 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
         if (_digits is not null)
         {
             FormatClock(shown);
-            var glyph = _digits[cls][0];
-            var tw = glyph.Width * _clockText.Length;
-            Darken(p, w, h, stride, pad - 4, pad - 2, tw + 8, glyph.Height + 4);
+            var atlas = _digits[cls];
+            var tw = 0;
+            foreach (var c in _clockText) tw += atlas[DemoText.ClockChars.IndexOf(c)].Width;
+            Darken(p, w, h, stride, pad - 4, pad - 2, tw + 8, atlas[0].Height + 4);
             var x = pad;
             foreach (var c in _clockText)
             {
-                var m = _digits[cls][DemoText.ClockChars.IndexOf(c)];
+                var m = atlas[DemoText.ClockChars.IndexOf(c)];
                 Blit(p, w, h, stride, m, x, pad);
-                x += glyph.Width;
+                x += m.Width;
             }
         }
-        if (_name is not null)
+        // Tiles show the name in the UI strip; the picture carries it only when it is big enough to read.
+        if (_name is not null && cls > 0)
         {
             var m = _name[cls];
             var nx = w - pad - m.Width;

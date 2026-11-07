@@ -1,5 +1,4 @@
 using System.Windows.Threading;
-using Cv.App.Demo;
 using Cv.App.Video;
 using Cv.Core;
 using Cv.Core.Nvr;
@@ -284,16 +283,7 @@ public sealed class PlaybackController
 
     void Raise() => Changed?.Invoke();
 
-    // RecordingTimeline is Track A's; in this branch it may still be a stub, so the demo falls back to its own copy.
-    IReadOnlyList<TimeRange> Merge(IReadOnlyList<RecordSegment> segments)
-    {
-        try { return RecordingTimeline.Merge(segments); }
-        catch (NotImplementedException) when (_s.Demo) { return DemoTimeline.Merge(segments); }
-    }
+    static IReadOnlyList<TimeRange> Merge(IReadOnlyList<RecordSegment> segments) => RecordingTimeline.Merge(segments);
 
-    TimeRange? SpanAtOrAfter(IReadOnlyList<TimeRange> spans, DateTime t)
-    {
-        try { return RecordingTimeline.SpanAtOrAfter(spans, t); }
-        catch (NotImplementedException) when (_s.Demo) { return DemoTimeline.SpanAtOrAfter(spans, t); }
-    }
+    static TimeRange? SpanAtOrAfter(IReadOnlyList<TimeRange> spans, DateTime t) => RecordingTimeline.SpanAtOrAfter(spans, t);
 }

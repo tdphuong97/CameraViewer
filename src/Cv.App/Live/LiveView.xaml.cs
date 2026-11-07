@@ -82,6 +82,12 @@ public partial class LiveView : UserControl, IPage
         return true;
     }
 
+    /// <summary>Capture mode: the hover buttons of the first tile.</summary>
+    internal void ShowHoverOnFirstTile()
+    {
+        if (_tiles.Count > 0) _tiles[0].ShowHover();
+    }
+
     /// <summary>Capture mode: opens single view of a channel as soon as the list is loaded.</summary>
     internal void ShowSingleWhenReady(int channel)
     {

@@ -51,6 +51,10 @@ internal static class CaptureMode
                     await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.5, o.DelaySeconds / 2)));
                     w.PlaybackPage.OpenExportDialog();
                     break;
+                case "update":
+                    w.ShowLive();
+                    await w.CheckUpdateAsync(manual: false);
+                    break;
                 case "saved":
                     w.ShowSaved();
                     break;
@@ -66,6 +70,8 @@ internal static class CaptureMode
                     break;
             }
             await Task.Delay(TimeSpan.FromSeconds(o.DelaySeconds));
+            if (o.View is "live" or "update") w.LivePage.ShowHoverOnFirstTile();
+            await Task.Delay(200);
             Save(w.Root, o.Width, o.Height, o.CaptureFile!);
             Log.Info($"Capture saved: {o.CaptureFile} ({o.View}, {o.Width}x{o.Height}, content {w.Root.ActualWidth}x{w.Root.ActualHeight})");
         }

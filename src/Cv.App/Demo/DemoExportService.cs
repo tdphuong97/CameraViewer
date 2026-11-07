@@ -134,7 +134,7 @@ internal sealed class DemoExportService : IExportService, IDisposable
     }
 
     static string OutputPath(ExportRequest r) =>
-        Path.Combine(r.OutputFolder, $"{r.CameraName}_{r.From:yyyy-MM-dd}_{r.From:HH'h'mm}-{r.To:HH'h'mm}.mp4");
+        Path.Combine(r.OutputFolder, ExportNaming.BaseName(r.CameraName, r.Channel, r.From, r.To) + ".mp4");
 
     void Seed(string folder, DateTime today)
     {

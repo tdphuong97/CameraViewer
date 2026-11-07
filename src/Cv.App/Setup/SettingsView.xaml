@@ -54,21 +54,14 @@
                             <TextBlock Text="Địa chỉ IP" Style="{StaticResource FieldLabel}" />
                             <TextBox x:Name="HostBox" app:Ui.Placeholder="ví dụ 192.168.1.64" />
                         </StackPanel>
-                        <Grid Grid.Row="1" Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="14" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Cổng HTTP" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="HttpPortBox" app:Ui.Placeholder="80" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Cổng RTSP" Style="{StaticResource FieldLabel}" />
-                                <TextBox x:Name="RtspPortBox" app:Ui.Placeholder="554" />
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                            <TextBlock Text="Cổng HTTP" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="HttpPortBox" app:Ui.Placeholder="80" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,14">
+                            <TextBlock Text="Cổng RTSP" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="RtspPortBox" app:Ui.Placeholder="554" />
+                        </StackPanel>
                         <StackPanel Grid.Row="2" Margin="0,0,0,4">
                             <TextBlock Text="Tài khoản" Style="{StaticResource FieldLabel}" />
                             <TextBox x:Name="UserBox" app:Ui.Placeholder="admin" />

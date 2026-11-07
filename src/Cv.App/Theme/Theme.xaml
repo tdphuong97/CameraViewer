@@ -296,12 +296,14 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
+                    <!-- No Padding on the border: the content host applies TextBox.Padding itself. -->
                     <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}"
-                            SnapsToDevicePixels="True">
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" SnapsToDevicePixels="True">
                         <Grid>
-                            <TextBlock x:Name="Ph" Text="{TemplateBinding app:Ui.Placeholder}" Foreground="#5E6678"
-                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="2,0,0,0" Visibility="Collapsed" />
+                            <Border Padding="{TemplateBinding Padding}" IsHitTestVisible="False">
+                                <TextBlock x:Name="Ph" Text="{TemplateBinding app:Ui.Placeholder}" Foreground="#5E6678"
+                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="2,0,0,0" Visibility="Collapsed" />
+                            </Border>
                             <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden"
                                           VerticalScrollBarVisibility="Hidden" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Grid>
@@ -341,8 +343,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="PasswordBox">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}"
-                            SnapsToDevicePixels="True">
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" SnapsToDevicePixels="True">
                         <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden"
                                       VerticalScrollBarVisibility="Hidden" VerticalAlignment="Center" />
                     </Border>

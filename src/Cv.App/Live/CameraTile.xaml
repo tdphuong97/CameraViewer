@@ -5,7 +5,8 @@
              xmlns:video="clr-namespace:Cv.App.Video">
     <Grid x:Name="Root" Background="Black" ClipToBounds="True" AllowDrop="True">
         <video:VideoView x:Name="Video" />
-        <Border x:Name="EmptyFill" Background="{StaticResource PanelBrush}" Visibility="Collapsed" />
+        <Border x:Name="EmptyFill" Background="#13161C" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                Visibility="Collapsed" />
 
         <StackPanel x:Name="Overlay" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" Visibility="Collapsed">
             <TextBlock x:Name="OverlayIcon" Style="{StaticResource Icon}" FontSize="22" HorizontalAlignment="Center"

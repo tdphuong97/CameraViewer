@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Cv.Core;
 
 namespace Cv.App.Logic;
 
@@ -8,15 +9,13 @@ public static partial class TimeFormat
 {
     static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-    static readonly string[] DayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-
-    public static string DayName(DateTime d) => DayNames[(int)d.DayOfWeek];
+    public static string DayName(DateTime d) => TimeText.DayName(d);
 
     /// <summary>"Thứ Bảy 07/11/2026".</summary>
     public static string LongDate(DateTime d) => DayName(d) + " " + d.ToString("dd/MM/yyyy", Inv);
 
     /// <summary>"07/11/2026".</summary>
-    public static string Date(DateTime d) => d.ToString("dd/MM/yyyy", Inv);
+    public static string Date(DateTime d) => TimeText.Date(d);
 
     /// <summary>"14:32:05".</summary>
     public static string Clock(DateTime t) => t.ToString("HH:mm:ss", Inv);
@@ -42,16 +41,8 @@ public static partial class TimeFormat
         return $"{s} giây";
     }
 
-    /// <summary>"48,2 MB", "1,3 GB", "820 KB" (Vietnamese decimal comma).</summary>
-    public static string Size(long bytes)
-    {
-        const double K = 1024, M = K * 1024, G = M * 1024;
-        string Num(double v) => v.ToString(v >= 100 ? "0" : "0.0", Inv).Replace('.', ',');
-        if (bytes >= G) return Num(bytes / G) + " GB";
-        if (bytes >= M) return Num(bytes / M) + " MB";
-        if (bytes >= K) return Math.Round(bytes / K).ToString(Inv) + " KB";
-        return bytes.ToString(Inv) + " B";
-    }
+    /// <summary>"12,3 MB" (Core's wording, so every size in the app reads the same).</summary>
+    public static string Size(long bytes) => TimeText.Size(bytes);
 
     /// <summary>"RAM 286 MB".</summary>
     public static string Ram(long bytes) => "RAM " + (bytes / (1024 * 1024)).ToString(Inv) + " MB";
