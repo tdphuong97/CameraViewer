@@ -37,7 +37,7 @@
 
         <!-- Loading / error / not configured -->
         <Border x:Name="MessagePanel" Style="{StaticResource Card}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                Width="460" Padding="32,28" Visibility="Collapsed">
+                Width="540" Padding="32,28" Visibility="Collapsed">
             <StackPanel>
                 <TextBlock x:Name="MessageIcon" Style="{StaticResource Icon}" FontSize="30" HorizontalAlignment="Center"
                            Foreground="{StaticResource MutedBrush}" />

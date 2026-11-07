@@ -21,11 +21,14 @@ public partial class App : Application
     EventWaitHandle? _show;
     Services? _services;
     MainWindow? _window;
+    bool _quiet;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         var o = AppOptions.Parse(e.Args);
+        // Screenshots and self-tests run unattended: never block on a message box.
+        _quiet = o.Capture || o.SelfTest;
 
         DispatcherUnhandledException += OnUiException;
         AppDomain.CurrentDomain.UnhandledException += (_, ex) => Log.Error("Unhandled exception", ex.ExceptionObject as Exception);
@@ -138,14 +141,15 @@ public partial class App : Application
     {
         Log.Error("UI exception", e.Exception);
         e.Handled = true;
-        if (CaptureMode.Active) return;
+        if (_quiet) return;
         MessageBox.Show("Phần mềm gặp lỗi nhỏ và vẫn chạy tiếp. Nếu lỗi lặp lại, hãy đóng rồi mở lại phần mềm.", Name,
             MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     void Fatal(string message)
     {
-        if (!CaptureMode.Active) MessageBox.Show(message, Name, MessageBoxButton.OK, MessageBoxImage.Error);
+        Log.Error("Fatal: " + message);
+        if (!_quiet) MessageBox.Show(message, Name, MessageBoxButton.OK, MessageBoxImage.Error);
         Shutdown(1);
     }
 
