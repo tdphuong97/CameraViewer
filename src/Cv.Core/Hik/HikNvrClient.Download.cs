@@ -9,7 +9,7 @@ internal sealed partial class HikNvrClient
 {
     private const string DownloadPath = "/ISAPI/ContentMgmt/download";
 
-    private sealed record PartPlan(string Uri, DateTime NominalStart, DateTime CoveredFrom, DateTime CoveredTo);
+    private sealed record PartPlan(string Uri, DateTime NominalStart, DateTime CoveredFrom, DateTime CoveredTo, TimeRange? Segment = null);
 
     private sealed record Attempt(DownloadMethod Method, HttpMethod Verb);
 
@@ -53,11 +53,11 @@ internal sealed partial class HikNvrClient
                 .ToList(),
             [DownloadMethod.BySegmentRange] = segments.Any(s => s.PlaybackUri.Length == 0) ? null : segments
                 .Select(s => (S: s, A: Max(from, s.Start), B: Min(to, s.End))).Where(r => r.B > r.A)
-                .Select(r => new PartPlan(Narrow(r.S.PlaybackUri, Wire(r.A), Wire(r.B)), r.A, r.A, r.B))
+                .Select(r => new PartPlan(Narrow(r.S.PlaybackUri, Wire(r.A), Wire(r.B)), r.A, r.A, r.B, new TimeRange(r.S.Start, r.S.End)))
                 .ToList(),
             [DownloadMethod.BySegmentWhole] = segments.Any(s => s.PlaybackUri.Length == 0) ? null : segments
                 .Select(s => (S: s, A: Max(from, s.Start), B: Min(to, s.End))).Where(r => r.B > r.A)
-                .Select(r => new PartPlan(r.S.PlaybackUri, r.S.Start, r.A, r.B))
+                .Select(r => new PartPlan(r.S.PlaybackUri, r.S.Start, r.A, r.B, new TimeRange(r.S.Start, r.S.End)))
                 .ToList(),
         };
 
@@ -110,7 +110,7 @@ internal sealed partial class HikNvrClient
                     return null;
                 }
                 done += got;
-                parts.Add(new DownloadedPart(path, plan[i].NominalStart, plan[i].CoveredFrom, plan[i].CoveredTo, method));
+                parts.Add(new DownloadedPart(path, plan[i].NominalStart, plan[i].CoveredFrom, plan[i].CoveredTo, method, plan[i].Segment));
             }
         }
         catch

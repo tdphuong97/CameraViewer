@@ -62,8 +62,10 @@ public enum DownloadMethod
 /// A file written by INvrClient.DownloadAsync. NominalStart is the device-local time the file is expected to begin
 /// at: the requested From for ByTime/BySegmentRange, the segment Start for BySegmentWhole. The export compares the
 /// file's real duration with (CoveredTo - NominalStart) to decide whether the recorder honored the range.
+/// Segment (segment methods only) is the recorder file the part came from: when a BySegmentRange answer turns out to
+/// be that whole file (firmware ignoring the narrowed times), the export cuts it like BySegmentWhole.
 /// </summary>
-public sealed record DownloadedPart(string FilePath, DateTime NominalStart, DateTime CoveredFrom, DateTime CoveredTo, DownloadMethod Method);
+public sealed record DownloadedPart(string FilePath, DateTime NominalStart, DateTime CoveredFrom, DateTime CoveredTo, DownloadMethod Method, TimeRange? Segment = null);
 
 /// <summary>Base of every recorder error. Message is Vietnamese, written for a non-technical user.</summary>
 public class NvrException(string message, Exception? inner = null) : Exception(message, inner);

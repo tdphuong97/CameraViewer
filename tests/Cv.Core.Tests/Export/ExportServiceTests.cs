@@ -104,6 +104,27 @@ public class ExportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_segment_range_answer_that_is_the_whole_segment_is_cut_like_a_whole_file()
+    {
+        // Firmware ignored the narrowed times and sent the whole 09:30-10:30 file for a 10:00-10:10 request.
+        Nvr.OnDownload = (ch, f, t, folder, _, _) =>
+        {
+            var part = FakeNvrClient.WritePart(folder, ch, f, t, DownloadMethod.BySegmentRange) with
+            {
+                Segment = new TimeRange(f.AddMinutes(-30), f.AddMinutes(30)),
+            };
+            return FakeNvrClient.Parts(part);
+        };
+        _media.Duration = _ => TimeSpan.FromMinutes(60);
+        var job = Service().Enqueue(Request());
+        await Finished(job);
+
+        Assert.Equal(ExportStatus.Done, job.Status);
+        var part = Assert.Single(Assert.Single(_media.Remuxes).Parts);
+        Assert.Equal((TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(40)), (part.From, part.To));
+    }
+
+    [Fact]
     public async Task Unsupported_download_falls_back_to_rtsp_recording()
     {
         Nvr.OnDownload = (_, _, _, _, _, _) => throw new NvrDownloadUnsupportedException("refused");

@@ -291,7 +291,8 @@ public sealed class ExportService : IExportService, IDisposable
     /// <summary>
     /// A part is honored when its real duration matches the covered range (± max(10 s, 10 %)). BySegmentWhole files
     /// are whole recorder files, so they are always cut to the covered range (bounds that reach the file ends stay
-    /// open). ByTime/BySegmentRange are never cut: a mismatch is only logged.
+    /// open). A BySegmentRange part that lasts as long as its whole segment is that file (firmware that ignores the
+    /// narrowed times) and is cut the same way. Other mismatches are only logged.
     /// </summary>
     private async Task<RemuxPart> PlanPartAsync(ExportJob job, DownloadedPart p, CancellationToken ct)
     {
@@ -301,6 +302,13 @@ public sealed class ExportService : IExportService, IDisposable
         try { duration = await _media.GetDurationAsync(p.FilePath, ct); }
         catch (Exception e) when (e is not OperationCanceledException) { Log.Warn($"Export {job.Id}: duration of {Path.GetFileName(p.FilePath)} unknown", e); }
         var honored = duration is { } d && (d - expected).Duration() <= tolerance;
+
+        if (!honored && p.Method == DownloadMethod.BySegmentRange && p.Segment is { } seg && duration is { } whole
+            && (whole - seg.Duration).Duration() <= TimeSpan.FromTicks(Math.Max(TimeSpan.FromSeconds(10).Ticks, seg.Duration.Ticks / 10)))
+        {
+            Log.Warn($"Export {job.Id}: recorder sent the whole segment for {Path.GetFileName(p.FilePath)}; cutting it like a whole file");
+            p = p with { NominalStart = seg.Start, Method = DownloadMethod.BySegmentWhole };
+        }
 
         if (p.Method == DownloadMethod.BySegmentWhole)
         {
