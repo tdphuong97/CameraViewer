@@ -116,14 +116,14 @@ foreach ($n in 1..17) {
     foreach ($s in @(@{ Id = '01'; Src = 'live/main' }, @{ Id = '02'; Src = 'live/sub' })) {
         [void]$paths.AppendLine("  Streaming/Channels/$n$($s.Id):")
         [void]$paths.AppendLine("    source: $src/$($s.Src)")
-        [void]$paths.AppendLine('    sourceOnDemand: yes')
+        [void]$paths.AppendLine('    sourceOnDemand: true')
         [void]$paths.AppendLine('    rtspTransport: tcp')
     }
 }
 # Recorded playback: any track, started on demand from the looped clip (starttime/endtime are ignored).
 [void]$paths.AppendLine('  "~^Streaming/tracks/[0-9]+$":')
 [void]$paths.AppendLine("    runOnDemand: '`"$ffmpegFwd`" -hide_banner -loglevel error -re -stream_loop -1 -i `"$playClip`" -c copy -f rtsp -rtsp_transport tcp $src/`$MTX_PATH'")
-[void]$paths.AppendLine('    runOnDemandRestart: yes')
+[void]$paths.AppendLine('    runOnDemandRestart: true')
 [void]$paths.AppendLine('    runOnDemandStartTimeout: 15s')
 [void]$paths.AppendLine('    runOnDemandCloseAfter: 5s')
 
@@ -147,21 +147,21 @@ authInternalUsers:
     permissions:
       - action: publish
       - action: read
-api: no
-metrics: no
-pprof: no
-playback: no
-rtsp: yes
+api: false
+metrics: false
+pprof: false
+playback: false
+rtsp: true
 rtspTransports: [udp, tcp]
 rtspEncryption: "no"
 rtspAddress: ${bind}:$RtspPort
 rtpAddress: ${bind}:18000
 rtcpAddress: ${bind}:18001
 rtspAuthMethods: [digest]
-rtmp: no
-hls: no
-webrtc: no
-srt: no
+rtmp: false
+hls: false
+webrtc: false
+srt: false
 paths:
 $($paths.ToString())
 "@
