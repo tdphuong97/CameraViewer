@@ -218,7 +218,8 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
                 var behind = now - last;
                 var text = $"kênh D{_recChannel}: {segs.Count} đoạn, {spans.Count} khoảng liên tục; đầu {segs.Min(s => s.Start):yyyy-MM-dd HH:mm:ss}, " +
                            $"cuối {last:yyyy-MM-dd HH:mm:ss} (trước giờ đầu ghi {Signed(behind)})";
-                if (_clock is { } k && k.UtcOffset != TimeSpan.Zero && (behind - k.UtcOffset).Duration() < TimeSpan.FromMinutes(10))
+                // A wrong time mode moves every recording by the UTC offset, into the past or the future.
+                if (_clock is { } k && k.UtcOffset != TimeSpan.Zero && (behind.Duration() - k.UtcOffset.Duration()).Duration() < TimeSpan.FromMinutes(10))
                     text += "; CẢNH BÁO: lệch đúng bằng múi giờ, có thể sai chế độ thời gian";
                 return (true, text);
             });

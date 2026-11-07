@@ -272,6 +272,20 @@ public sealed class ProbeRunnerTests : IDisposable
         Assert.EndsWith("-2.txt", b.SavedPath);
     }
 
+    [Theory]
+    [InlineData(-7)]
+    [InlineData(7)]
+    public async Task Recordings_shifted_by_the_utc_offset_hint_at_a_wrong_time_mode(int hours)
+    {
+        // Still recording (the last file ends now), but every time comes back moved by the offset.
+        var now = FakeNvr.Now.AddHours(hours);
+        _nvr.Search = _ => [new RecordSegment(now.AddHours(-3), now.AddHours(-1), "rtsp://x/a"), new RecordSegment(now.AddHours(-1), now, "rtsp://x/b")];
+
+        var r = await RunAsync();
+
+        Assert.Contains("có thể sai chế độ thời gian", r.Text);
+    }
+
     [Fact]
     public async Task Clock_far_from_the_pc_is_flagged()
     {
