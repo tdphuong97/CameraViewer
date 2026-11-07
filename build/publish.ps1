@@ -44,6 +44,9 @@ Windows có thể hiện cảnh báo xanh "Windows đã bảo vệ máy tính c�
 Bản chính thức chỉ có ở trang này. SHA-256 của CameraViewer-Setup-$version.exe:
 ``$($latest.windows.sha256)``
 "@
-& $gh release create "v$version" $setup 'dist\latest.json' --repo $repo --title "Camera Viewer $version" --notes $body
+# Notes go through a file: Windows PowerShell 5.1 splits native arguments at embedded double quotes.
+$notesFile = Join-Path (Get-Location) 'dist\release-notes.md'
+[IO.File]::WriteAllText($notesFile, $body, [Text.UTF8Encoding]::new($false))
+& $gh release create "v$version" $setup 'dist\latest.json' --repo $repo --title "Camera Viewer $version" --notes-file $notesFile
 if ($LASTEXITCODE) { throw 'Publishing the release failed.' }
 "Published https://github.com/$repo/releases/tag/v$version"
