@@ -1,3 +1,8 @@
+## 0.9.1
+
+- Thêm nút Hướng dẫn sử dụng (dấu hỏi, góc trên bên phải) và phím F1: mở tài liệu hướng dẫn đi kèm phần mềm, đọc được cả khi không có Internet.
+- Tài liệu hướng dẫn sử dụng đầy đủ: cài đặt, kết nối đầu ghi, xem trực tiếp, xem lại, lưu video, cập nhật, chẩn đoán, xử lý sự cố.
+
 ## 0.9.0
 
 - Bản đầu tiên: xem camera của một đầu ghi Hikvision, thay cho phần mềm quản lý nặng nề, ít tốn RAM.

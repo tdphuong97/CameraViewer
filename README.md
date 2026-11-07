@@ -6,7 +6,9 @@ Phần mềm Windows nhẹ để **xem camera của một đầu ghi Hikvision**
 - Ít RAM: lưới camera dùng luồng phụ, chỉ camera đang hiện trên màn hình mới được mở; góc phải luôn hiện RAM đang dùng.
 - Giao diện tiếng Việt, viết cho người không rành kỹ thuật.
 
-Mã nguồn công khai, giấy phép MIT. Phiên bản hiện tại là **0.9.0**: đã kiểm thử bằng đầu ghi giả lập, **chưa thử trên đầu ghi thật** (xem [Báo cáo chẩn đoán](#báo-cáo-chẩn-đoán)). Đầu ghi dùng để thiết kế: DS-7732NI-M4 (32 kênh IP); các đầu ghi Hikvision có ISAPI và RTSP khác thường cũng chạy được.
+Mã nguồn công khai, giấy phép MIT. Phiên bản hiện tại là **0.9.1**: đã kiểm thử bằng đầu ghi giả lập, **chưa thử trên đầu ghi thật** (xem [Báo cáo chẩn đoán](#báo-cáo-chẩn-đoán)). Đầu ghi dùng để thiết kế: DS-7732NI-M4 (32 kênh IP); các đầu ghi Hikvision có ISAPI và RTSP khác thường cũng chạy được.
+
+**Hướng dẫn sử dụng** từng bước, có ảnh: [docs/](docs/README.md). Trong phần mềm, bấm dấu hỏi ở góc trên bên phải hoặc nhấn `F1` để mở bản đi kèm (đọc được không cần Internet).
 
 ## Cài đặt
 
@@ -98,6 +100,7 @@ Cần .NET 10 SDK, Inno Setup 6 (bộ cài), Python (vẽ biểu tượng), Powe
 2. Xây dựng: `.\build.ps1` chạy test, đóng gói phần mềm vào `dist\app` (một file exe, FFmpeg DLL trong `dist\app\ffmpeg\`) và tạo bộ cài `dist\CameraViewer-Setup-<phiên bản>.exe`. Tuỳ chọn: `-SkipTests`, `-SkipInstaller`, `-Publish` (đăng bản lên GitHub Releases kèm `latest.json` cho cập nhật một chạm).
 3. Chạy thử không cần đầu ghi: `CameraViewer.exe --demo`. Đặt biến môi trường `CV_DATA` trỏ tới thư mục tạm để không đụng cài đặt thật.
 4. Biểu tượng: `python build\make-icon.py` vẽ lại `src\Cv.App\Assets\cv.ico`.
+5. Hướng dẫn sử dụng: sửa các trang Markdown trong `docs\` (định dạng GitBook), rồi chạy `powershell -ExecutionPolicy Bypass -File build\update-help.ps1` để dựng lại `src\Cv.App\Help\huong-dan.html` (một file HTML, đi kèm bộ cài, nút dấu hỏi và phím F1 mở nó). Ảnh chụp màn hình lấy bằng `CameraViewer.exe --demo --capture <file.png> --view live|single|playback|export|saved|settings`.
 
 Cấu trúc: `src\Cv.Core` (giao tiếp ISAPI, cài đặt, hàng đợi lưu video, cập nhật), `src\Cv.Media` (FFmpeg: giải mã, chuyển MP4), `src\Cv.Diagnostics` (chẩn đoán), `src\Cv.App` (giao diện WPF), `tools\MockNvr` (đầu ghi giả lập), `tests\` (xUnit).
 

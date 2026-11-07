@@ -37,6 +37,9 @@ internal static class Shell
         return OpenFolder(folder);
     }
 
+    /// <summary>Opens a web address in the default browser.</summary>
+    public static string? OpenUrl(string url) => Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
     static string Quote(string s) => "\"" + s + "\"";
 
     static string? Start(ProcessStartInfo psi)

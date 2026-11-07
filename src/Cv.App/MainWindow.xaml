@@ -42,6 +42,23 @@
                             ToolTip="Bộ nhớ máy tính phần mềm đang dùng">
                         <TextBlock x:Name="RamText" FontSize="12" Foreground="{StaticResource MutedBrush}" Text="RAM" />
                     </Border>
+                    <Button x:Name="HelpButton" Click="OnHelp" ToolTip="Hướng dẫn sử dụng (F1)" Cursor="Hand"
+                            FocusVisualStyle="{x:Null}" Foreground="{StaticResource SubtleBrush}" Margin="0,0,4,0">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Width="40" Height="40" CornerRadius="6" Background="Transparent">
+                                    <TextBlock Text="&#xE897;" FontFamily="{StaticResource IconFont}" FontSize="18"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{StaticResource RaisedBrush}" />
+                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                     <RadioButton x:Name="TabSettings" GroupName="tabs" Click="OnTabSettings" ToolTip="Cài đặt"
                                  Cursor="Hand" FocusVisualStyle="{x:Null}" Foreground="{StaticResource SubtleBrush}">
                         <RadioButton.Template>

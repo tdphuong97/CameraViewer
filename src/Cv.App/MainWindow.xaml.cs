@@ -136,8 +136,27 @@ public partial class MainWindow : Window, IShell
     void OnTabSaved(object sender, RoutedEventArgs e) => ShowSaved();
     void OnTabSettings(object sender, RoutedEventArgs e) => ShowSettings();
 
+    // ---- User guide: the offline HTML shipped next to the exe, else the copy on GitHub ----
+
+    internal const string HelpFile = "huong-dan.html";
+    internal const string HelpUrl = "https://github.com/tdphuong97/CameraViewer/blob/main/docs/README.md";
+
+    void OnHelp(object sender, RoutedEventArgs e) => OpenHelp();
+
+    internal void OpenHelp()
+    {
+        var local = System.IO.Path.Combine(AppContext.BaseDirectory, HelpFile);
+        ShowError(System.IO.File.Exists(local) ? Shell.OpenFile(local) : Shell.OpenUrl(HelpUrl));
+    }
+
     void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F1)
+        {
+            OpenHelp();
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Escape) return;
         if (ModalHost.Visibility == Visibility.Visible)
         {

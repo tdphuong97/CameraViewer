@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>CameraViewer</AssemblyName>
     <RootNamespace>Cv.App</RootNamespace>
-    <Version>0.9.0</Version>
+    <Version>0.9.1</Version>
     <Product>Camera Viewer</Product>
     <ApplicationIcon>Assets\cv.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -26,6 +26,11 @@
 
   <ItemGroup>
     <Resource Include="Assets\cv.ico" />
+  </ItemGroup>
+
+  <!-- The user guide (docs\ built by build\update-help.ps1) ships next to the exe; the Hướng dẫn button opens it. -->
+  <ItemGroup>
+    <Content Include="Help\huong-dan.html" Link="huong-dan.html" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Condition="Exists('Help\huong-dan.html')" />
   </ItemGroup>
 
 </Project>
