@@ -29,6 +29,10 @@ public partial class SettingsView : UserControl, IPage
 
     public void Activate() => Fill();
 
+    internal string TestResultText => TestText.Text;
+    internal void TestConnection() => OnTest(this, new RoutedEventArgs());
+    internal void TestSaveRecorder() => OnSave(this, new RoutedEventArgs());
+
     public void Deactivate() { }
 
     void Fill()

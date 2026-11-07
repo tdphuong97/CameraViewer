@@ -137,14 +137,30 @@ internal static class DemoSelfTest
             w.ShowSettings();
             await Wait(0.5);
             Check(FramePump.Count == 0, "settings: no source open");
+            var settings = w.SettingsPage;
+            settings.TestConnection();
+            await Wait(1.5);
+            Check(settings.TestResultText.StartsWith("Đã kết nối: DS-7732NI-M4 · ", StringComparison.Ordinal), $"Kiểm tra kết nối: \"{settings.TestResultText}\"");
+            var oldClient = s.Nvr;
+            settings.TestSaveRecorder();
+            Check(!ReferenceEquals(oldClient, s.Nvr) && s.Nvr is not null, "Lưu: recorder client recreated");
+            Check(pb.TestController.Camera is null, "playback forgets the old recorder's camera");
             w.ShowSaved();
             for (var i = 0; i < 90 && job.Status != ExportStatus.Done; i++) await Wait(0.5);
             Check(job.Status == ExportStatus.Done, $"export finishes ({job.Status})");
             await Wait(0.5);
             Check(w.Toasts.Children.Count > 0, "a toast tells the user");
             w.ShowLive();
+            await Wait(2);
+            Check(FramePump.Count == online, $"back to live (list reloaded): {FramePump.Count} sources");
+
+            await w.CheckUpdateAsync(manual: false);
+            Check(w.UpdateBanner.Visibility == Visibility.Visible && w.UpdateText.Text.Contains("0.9.1", StringComparison.Ordinal), $"update banner: \"{w.UpdateText.Text}\"");
+            w.TestUpdateClick();
             await Wait(1.5);
-            Check(FramePump.Count == online, $"back to live: {FramePump.Count} sources");
+            Check(w.UpdateProgress.Visibility == Visibility.Visible, $"update downloading: \"{w.UpdateText.Text}\"");
+            for (var i = 0; i < 40 && w.UpdateBanner.Visibility == Visibility.Visible; i++) await Wait(0.5);
+            Check(w.UpdateBanner.Visibility != Visibility.Visible, "update downloaded and verified (demo does not install)");
         }
         catch (Exception ex)
         {

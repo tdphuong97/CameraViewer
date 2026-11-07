@@ -349,6 +349,8 @@ public partial class MainWindow : Window, IShell
         if (progress is { } p) UpdateProgress.Value = p;
     }
 
+    internal void TestUpdateClick() => OnUpdateClick(this, new RoutedEventArgs());
+
     void OnUpdateLater(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;
 
     async void OnUpdateClick(object sender, RoutedEventArgs e)
