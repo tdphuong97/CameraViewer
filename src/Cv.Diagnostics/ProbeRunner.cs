@@ -27,7 +27,10 @@ internal sealed record ProbeTimeouts
     public TimeSpan Watch { get; init; } = TimeSpan.FromSeconds(3);
     public int MinFrames { get; init; } = 5;
     public TimeSpan Poll { get; init; } = TimeSpan.FromMilliseconds(40);
-    public TimeSpan Download { get; init; } = TimeSpan.FromMinutes(3);
+    /// <summary>A recorder that only serves whole 1-hour files can send gigabytes for the app's own export.</summary>
+    public TimeSpan Download { get; init; } = TimeSpan.FromMinutes(10);
+    /// <summary>Forced single-method downloads stop here: far more than 10 s of any stream.</summary>
+    public long MethodByteCap { get; init; } = 64L * 1024 * 1024;
     public TimeSpan Media { get; init; } = TimeSpan.FromSeconds(60);
     public TimeSpan Record { get; init; } = TimeSpan.FromSeconds(60);
     public TimeSpan ExportLength { get; init; } = TimeSpan.FromSeconds(10);
@@ -105,6 +108,8 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
         private string? _liveSub, _liveMain;
         private bool? _playback;
         private DownloadMethod? _isapiMethod;
+        private readonly Dictionary<DownloadMethod, string> _methods = [];
+        private bool _isapiOk;
         private TimeSpan? _isapiMp4, _rtspMp4;
 
         private ProbeTimeouts T => owner.Timeouts;
@@ -180,7 +185,7 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
         private (bool, string) ClockVerdict(DeviceClock c)
         {
             var deviceUtc = DateTime.SpecifyKind(c.LocalNow - c.UtcOffset, DateTimeKind.Utc);
-            _skew = deviceUtc - owner.Time.GetUtcNow().UtcDateTime;
+            _skew = TimeSpan.FromSeconds(Math.Round((deviceUtc - owner.Time.GetUtcNow().UtcDateTime).TotalSeconds));
             var skewText = $"lệch so với máy tính {Signed(_skew.Value)}";
             if (_skew.Value.Duration() > TimeSpan.FromMinutes(5)) skewText += " (nhiều: nên bật NTP trên đầu ghi)";
             return (true, $"{c.LocalNow:yyyy-MM-dd HH:mm:ss} UTC{Offset(c.UtcOffset)}, {skewText}");
@@ -277,110 +282,149 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
 
         private async Task IsapiExportSteps(INvrClient nvr, int ch, DateTime from, DateTime to)
         {
-            var name = $"Lưu video {Seconds(to - from)} qua ISAPI, kênh D{ch} {from:HH:mm:ss}–{to:HH:mm:ss}";
-            ct.ThrowIfCancellationRequested();
-            if (_stopReason is not null) { Skip(name, _stopReason); return; }
-            progress?.Report(name);
-            var folder = Path.Combine(_temp, "isapi");
-            Directory.CreateDirectory(folder);
-            var bytes = new LastValue();
-            var sw = Stopwatch.StartNew();
+            var len = to - from;
+            var diag = nvr as INvrDiagnostics;
+
+            // 1. The export as the app does it: DownloadAsync picks the method (ByTime, then BySegmentRange, then
+            // BySegmentWhole); no byte cap, a recorder that only serves whole files really sends a whole file.
             IReadOnlyList<DownloadedPart>? parts = null;
-            using (var cts = Linked(T.Download))
+            var unsupported = false;
+            await Run($"Lưu video {Seconds(len)} qua ISAPI như phần mềm làm, kênh D{ch} {from:HH:mm:ss}–{to:HH:mm:ss}", T.Download + T.Media, async c =>
             {
-                try
-                {
-                    parts = await nvr.DownloadAsync(ch, from, to, folder, bytes, cts.Token);
-                    if (parts.Count == 0) Add(name, ProbeOutcome.Fail, sw.Elapsed, "đầu ghi không trả về phần nào");
-                    else Add(name, ProbeOutcome.Pass, sw.Elapsed, PartsText(parts));
-                }
+                var bytes = new ByteCounter(long.MaxValue);
+                var sw = Stopwatch.StartNew();
+                try { parts = await nvr.DownloadAsync(ch, from, to, Folder("auto"), bytes, c); }
                 catch (NvrDownloadUnsupportedException ex)
                 {
-                    Add(name, ProbeOutcome.Fail, sw.Elapsed, Describe(ex));
-                    foreach (var m in IsapiMethods)
-                        Add($"  cách {m}", ProbeOutcome.Fail, TimeSpan.Zero, "đầu ghi không làm được (cả ba cách đều hỏng, phần mềm sẽ ghi lại qua RTSP)");
-                    return;
+                    unsupported = true;
+                    return (false, Describe(ex) + " (phần mềm sẽ ghi lại qua RTSP)");
                 }
-                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-                {
-                    Add(name, ProbeOutcome.Fail, sw.Elapsed, $"quá thời gian chờ ({T.Download.TotalSeconds:0} giây), đã nhận {Bytes(bytes.Value)}");
-                    return;
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    Add(name, ProbeOutcome.Fail, sw.Elapsed, Describe(ex) + (bytes.Value > 0 ? $"; đã nhận {Bytes(bytes.Value)}" : ""));
-                    StopIfFatal(ex);
-                    return;
-                }
-            }
-            if (parts.Count == 0) return;
+                if (parts.Count == 0) return (false, "đầu ghi không trả về phần nào");
+                var method = diag?.WorkingMethod ?? parts[0].Method;
+                _isapiMethod = method;
+                var took = sw.Elapsed;
+                var conv = await ConvertAsync(parts, len, Path.Combine(_temp, "probe-isapi.mp4"), c);
+                _isapiMp4 = conv.Mp4;
+                _isapiOk = conv.Ok;
+                return (conv.Ok, $"cách phần mềm chọn: {method}; tải {Bytes(bytes.Value)} trong {Seconds(took)}; {conv.Detail}");
+            }, r => r);
+            DeleteFolder("auto");
 
-            // DownloadAsync tries ByTime, BySegmentRange, BySegmentWhole in order on a fresh client: the method it
-            // returns tells which earlier ones the recorder refused.
-            var used = parts[0].Method;
-            _isapiMethod = used;
-            var usedAt = Array.IndexOf(IsapiMethods, used);
+            // 2. Each ISAPI method alone: what this recorder can do (informational lines, they do not fail the probe).
+            if (diag is not null)
+            {
+                foreach (var m in IsapiMethods) await MethodStep(diag, m, ch, from, to);
+                return;
+            }
+            // Without INvrDiagnostics: DownloadAsync on a fresh client tried the methods in order, so the method it
+            // returned tells which earlier ones the recorder refused.
+            if (_stopReason is not null) return;
+            var usedAt = parts is { Count: > 0 } ? Array.IndexOf(IsapiMethods, parts[0].Method) : -1;
             for (var i = 0; i < IsapiMethods.Length; i++)
             {
                 var m = IsapiMethods[i];
-                if (usedAt < 0) Skip($"  cách {m}", $"phần mềm dùng cách {used}");
-                else if (i < usedAt) Add($"  cách {m}", ProbeOutcome.Fail, TimeSpan.Zero, $"đầu ghi không làm được (phần mềm đã chuyển sang cách {used})");
-                else if (i == usedAt) Add($"  cách {m}", ProbeOutcome.Pass, TimeSpan.Zero, "đầu ghi làm được, phần mềm sẽ dùng cách này");
+                if (unsupported) Add($"  cách {m}", ProbeOutcome.Fail, TimeSpan.Zero, "đầu ghi không làm được");
+                else if (usedAt < 0) Skip($"  cách {m}", "không xác định được");
+                else if (i < usedAt) Add($"  cách {m}", ProbeOutcome.Fail, TimeSpan.Zero, $"đầu ghi không làm được (phần mềm đã chuyển sang cách {IsapiMethods[usedAt]})");
+                else if (i == usedAt) Add($"  cách {m}", ProbeOutcome.Pass, TimeSpan.Zero, "đầu ghi làm được, phần mềm dùng cách này");
                 else Skip($"  cách {m}", "không cần thử: phần mềm dừng ở cách đầu tiên làm được");
             }
-
-            // Real duration of each part, then the same trim rule as the export: honored parts are copied whole.
-            var remux = new List<RemuxPart>();
-            var durations = await Run("Độ dài từng phần tải về", T.Media, async c =>
-            {
-                var list = new List<TimeSpan?>();
-                foreach (var p in parts) list.Add(await owner._media.GetDurationAsync(p.FilePath, c));
-                return list;
-            }, list =>
-            {
-                var lines = new List<string>();
-                var ok = true;
-                for (var i = 0; i < parts.Count; i++)
-                {
-                    var p = parts[i];
-                    var covered = p.CoveredTo - p.CoveredFrom;
-                    var d = list[i];
-                    if (d is null) { ok = false; lines.Add($"phần {i + 1}: không đọc được"); remux.Add(new RemuxPart(p.FilePath)); continue; }
-                    var honored = (d.Value - covered).Duration() <= Max(TimeSpan.FromSeconds(10), covered / 10);
-                    string how;
-                    if (honored || p.Method == DownloadMethod.ByTime)
-                    {
-                        remux.Add(new RemuxPart(p.FilePath));
-                        how = honored ? "đúng khoảng yêu cầu" : "CẢNH BÁO: đầu ghi trả khác khoảng yêu cầu, không cắt được";
-                    }
-                    else
-                    {
-                        remux.Add(new RemuxPart(p.FilePath, p.CoveredFrom - p.NominalStart, p.CoveredTo - p.NominalStart));
-                        how = $"cả đoạn, cắt lấy {Seconds(p.CoveredFrom - p.NominalStart)}–{Seconds(p.CoveredTo - p.NominalStart)}";
-                    }
-                    lines.Add($"phần {i + 1}: {Seconds(d.Value)} (cần {Seconds(covered)}, {how})");
-                }
-                return (ok, string.Join("; ", lines));
-            });
-            if (!durations.Ok) return;
-
-            var mp4 = Path.Combine(_temp, "probe-isapi.mp4");
-            _isapiMp4 = await RemuxAndCheck("Chuyển sang MP4 (không nén lại) và kiểm tra độ dài", remux, mp4, to - from);
         }
 
-        private async Task<TimeSpan?> RemuxAndCheck(string name, List<RemuxPart> parts, string mp4, TimeSpan expected)
+        /// <summary>
+        /// One forced method. A download far bigger than the range (a whole 1-hour file can be gigabytes on a real
+        /// recorder) is stopped early: enough to know what the recorder sends.
+        /// </summary>
+        private async Task MethodStep(INvrDiagnostics d, DownloadMethod m, int ch, DateTime from, DateTime to)
         {
-            TimeSpan? result = null;
-            await Run(name, T.Media, async c =>
+            var len = to - from;
+            await Run($"  cách {m}", T.Download + T.Media, async c =>
             {
-                await owner._media.RemuxAsync(parts, mp4, null, c);
-                return await owner._media.GetDurationAsync(mp4, c);
-            }, d =>
+                var bytes = new ByteCounter(T.MethodByteCap);
+                using var cap = CancellationTokenSource.CreateLinkedTokenSource(c);
+                bytes.Exceeded = cap.Cancel;
+                var sw = Stopwatch.StartNew();
+                IReadOnlyList<DownloadedPart> got;
+                try
+                {
+                    got = await d.DownloadWithAsync(m, ch, from, to, Folder(m.ToString()), bytes, cap.Token);
+                }
+                catch (NvrDownloadUnsupportedException)
+                {
+                    _methods[m] = "từ chối";
+                    return (false, "đầu ghi từ chối cách này");
+                }
+                catch (OperationCanceledException) when (bytes.Over && !c.IsCancellationRequested)
+                {
+                    var rate = $"{Bytes(bytes.Value)} sau {Seconds(sw.Elapsed)}, {bytes.Value / 1048576.0 / Math.Max(0.001, sw.Elapsed.TotalSeconds):0.0} MB/giây";
+                    if (m == DownloadMethod.BySegmentWhole)
+                    {
+                        _methods[m] = "được (cả đoạn)";
+                        return (true, $"đầu ghi gửi cả đoạn ghi ({rate}); dừng sớm cho đỡ tốn thời gian");
+                    }
+                    _methods[m] = "trả cả đoạn";
+                    return (false, $"đầu ghi gửi nhiều hơn {Seconds(len)} rất nhiều ({rate}): có vẻ trả cả đoạn ghi, cắt theo khoảng yêu cầu sẽ sai chỗ");
+                }
+                var took = sw.Elapsed;
+                var conv = await ConvertAsync(got, len, Path.Combine(_temp, $"probe-{m}.mp4"), c);
+                _methods[m] = conv.Ok ? "được" : "sai";
+                return (conv.Ok, $"tải {Bytes(bytes.Value)} trong {Seconds(took)}; {conv.Detail}");
+            }, r => r);
+            DeleteFolder(m.ToString());
+        }
+
+        /// <summary>
+        /// Same rule as the export: a part whose real length matches what it should cover is copied whole; a whole
+        /// segment (BySegmentWhole) is trimmed from its start; anything else that does not match is a problem.
+        /// Then remux to MP4 and check its length.
+        /// </summary>
+        private async Task<(bool Ok, string Detail, TimeSpan? Mp4)> ConvertAsync(IReadOnlyList<DownloadedPart> parts, TimeSpan expected, string mp4, CancellationToken c)
+        {
+            var remux = new List<RemuxPart>();
+            var notes = new List<string>();
+            var ok = true;
+            for (var i = 0; i < parts.Count; i++)
             {
-                result = d;
-                return LengthVerdict(d, expected, mp4);
-            });
-            return result;
+                var p = parts[i];
+                var covered = p.CoveredTo - p.CoveredFrom;
+                var d = await owner._media.GetDurationAsync(p.FilePath, c);
+                if (d is null) return (false, $"{PartsText(parts)}; phần {i + 1}: không đọc được video trong file", null);
+                var trimmed = new RemuxPart(p.FilePath, p.CoveredFrom - p.NominalStart, p.CoveredTo - p.NominalStart);
+                if ((d.Value - covered).Duration() <= Max(TimeSpan.FromSeconds(10), covered / 10))
+                {
+                    remux.Add(new RemuxPart(p.FilePath));
+                    notes.Add($"phần {i + 1} dài {Seconds(d.Value)}, đúng khoảng yêu cầu");
+                }
+                else if (p.Method == DownloadMethod.BySegmentWhole)
+                {
+                    remux.Add(trimmed);
+                    notes.Add($"phần {i + 1} là cả đoạn {Seconds(d.Value)}, cắt lấy {Seconds(trimmed.From!.Value)}–{Seconds(trimmed.To!.Value)}");
+                }
+                else
+                {
+                    ok = false;
+                    remux.Add(p.Method == DownloadMethod.ByTime ? new RemuxPart(p.FilePath) : trimmed);
+                    notes.Add($"phần {i + 1} dài {Seconds(d.Value)} thay vì {Seconds(covered)}: đầu ghi không cắt đúng khoảng yêu cầu");
+                }
+            }
+            await owner._media.RemuxAsync(remux, mp4, null, c);
+            var md = await owner._media.GetDurationAsync(mp4, c);
+            var (lok, ltext) = LengthVerdict(md, expected, mp4);
+            return (ok && lok, $"{PartsText(parts)}; {string.Join("; ", notes)}; {ltext}", md);
+        }
+
+        private string Folder(string name)
+        {
+            var f = Path.Combine(_temp, name);
+            Directory.CreateDirectory(f);
+            return f;
+        }
+
+        /// <summary>Downloads can be large: free the disk after each step.</summary>
+        private void DeleteFolder(string name)
+        {
+            try { var f = Path.Combine(_temp, name); if (Directory.Exists(f)) Directory.Delete(f, true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Warn("Probe: delete " + name, ex); }
         }
 
         private async Task RtspRecordStep(INvrClient nvr, int ch, DateTime from, DateTime to)
@@ -526,11 +570,14 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
 
         private string ExportSummary()
         {
+            var methods = _methods.Count == 0 ? "" : " [" + string.Join(", ", IsapiMethods.Where(_methods.ContainsKey).Select(k => $"{k}: {_methods[k]}")) + "]";
             if (_isapiMethod is { } m && _isapiMp4 is not null)
-                return $"được, tải qua ISAPI (cách {m}), MP4 dài {Seconds(_isapiMp4.Value)}";
+                return _isapiOk
+                    ? $"được, tải qua ISAPI (cách {m}), MP4 dài {Seconds(_isapiMp4.Value)}{methods}"
+                    : $"CÓ VẤN ĐỀ: tải qua ISAPI (cách {m}) nhưng video không đúng khoảng yêu cầu (xem bước lỗi){methods}";
             if (_rtspMp4 is not null)
-                return $"chỉ bằng cách ghi lại qua RTSP (chậm: bằng thời gian thật), MP4 dài {Seconds(_rtspMp4.Value)}";
-            if (_isapiMethod is { } m2) return $"tải qua ISAPI được (cách {m2}) nhưng chuyển sang MP4 có lỗi";
+                return $"chỉ bằng cách ghi lại qua RTSP (chậm: bằng thời gian thật), MP4 dài {Seconds(_rtspMp4.Value)}{methods}";
+            if (_isapiMethod is { } m2) return $"tải qua ISAPI được (cách {m2}) nhưng chuyển sang MP4 có lỗi{methods}";
             return _steps.Any(s => s.Name.StartsWith("Lưu video", StringComparison.Ordinal) && s.Outcome != ProbeOutcome.Skip) ? "KHÔNG được" : "chưa thử";
         }
 
@@ -540,7 +587,9 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
 
         private static string AppVersion()
         {
-            var a = Assembly.GetEntryAssembly() ?? typeof(ProbeRunner).Assembly;
+            // The app's exe is CameraViewer.dll inside the bundle; elsewhere (tests, tools) say which assembly ran it.
+            var a = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(x => x.GetName().Name == "CameraViewer");
+            if (a is null) return $"(chạy từ {Assembly.GetEntryAssembly()?.GetName().Name ?? "?"})";
             var v = a.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? a.GetName().Version?.ToString() ?? "?";
             var plus = v.IndexOf('+');
             return plus > 0 ? v[..plus] : v;
@@ -624,7 +673,7 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
 
         private static TimeSpan Max(TimeSpan a, TimeSpan b) => a > b ? a : b;
         private static string Seconds(TimeSpan t) => string.Create(CultureInfo.InvariantCulture, $"{t.TotalSeconds:0.0} giây");
-        private static string Signed(TimeSpan t) => (t < TimeSpan.Zero ? "-" : "+") + t.Duration().ToString(t.Duration() >= TimeSpan.FromDays(1) ? @"d\.hh\:mm\:ss" : @"hh\:mm\:ss", CultureInfo.InvariantCulture);
+        private static string Signed(TimeSpan t) => (t < TimeSpan.FromSeconds(-0.5) ? "-" : "+") + t.Duration().ToString(t.Duration() >= TimeSpan.FromDays(1) ? @"d\.hh\:mm\:ss" : @"hh\:mm\:ss", CultureInfo.InvariantCulture);
         private static string Offset(TimeSpan t) => (t < TimeSpan.Zero ? "-" : "+") + t.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture);
         private static string Bytes(long b) => b switch
         {
@@ -634,12 +683,20 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
         };
     }
 
-    /// <summary>Keeps the latest reported value, inline (no SynchronizationContext hop like Progress&lt;T&gt;).</summary>
-    private sealed class LastValue : IProgress<long>
+    /// <summary>Running byte total reported inline (no SynchronizationContext hop like Progress&lt;T&gt;); calls Exceeded once over the cap.</summary>
+    private sealed class ByteCounter(long cap) : IProgress<long>
     {
         private long _value;
+        private int _over;
+        public Action? Exceeded { get; set; }
         public long Value => Interlocked.Read(ref _value);
-        public void Report(long value) => Interlocked.Exchange(ref _value, value);
+        public bool Over => Volatile.Read(ref _over) == 1;
+
+        public void Report(long value)
+        {
+            Interlocked.Exchange(ref _value, value);
+            if (value > cap && Interlocked.Exchange(ref _over, 1) == 0) Exceeded?.Invoke();
+        }
     }
 
     private readonly INvrClientFactory _nvrs = nvrs;

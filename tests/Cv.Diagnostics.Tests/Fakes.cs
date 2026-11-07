@@ -5,7 +5,7 @@ using Cv.Core.Video;
 namespace Cv.Diagnostics.Tests;
 
 /// <summary>A recorder in memory: every call can be replaced; calls are recorded.</summary>
-internal sealed class FakeNvr : INvrClient
+internal sealed class FakeNvr : INvrClient, INvrDiagnostics
 {
     public const string Host = "192.168.1.64";
     public readonly List<string> Calls = [];
@@ -25,12 +25,16 @@ internal sealed class FakeNvr : INvrClient
             var start = Now.Date.AddHours(-4 + i);
             return new RecordSegment(start, start.AddHours(1), $"rtsp://{Host}/Streaming/tracks/{ch}01/?name={i}");
         }).Where(s => s.Start < Now).Select(s => s.End > Now ? s with { End = Now } : s).ToList();
-    public Func<int, DateTime, DateTime, string, IReadOnlyList<DownloadedPart>> Download = (ch, from, to, folder) =>
-    {
-        var path = Path.Combine(folder, "part1.ps");
-        File.WriteAllBytes(path, [(byte)'I', (byte)'M', (byte)'K', (byte)'H', 0, 0, 0, 0]);
-        return [new DownloadedPart(path, from, from, to, DownloadMethod.ByTime)];
-    };
+    /// <summary>method null = DownloadAsync (the client picks), else DownloadWithAsync(method).</summary>
+    public Func<DownloadMethod?, DateTime, DateTime, string, IProgress<long>?, CancellationToken, IReadOnlyList<DownloadedPart>> Download =
+        (method, from, to, folder, bytes, ct) =>
+        {
+            var path = Path.Combine(folder, $"{method?.ToString() ?? "auto"}.ps");
+            File.WriteAllBytes(path, [(byte)'I', (byte)'M', (byte)'K', (byte)'H', 0, 0, 0, 0]);
+            bytes?.Report(8);
+            return [new DownloadedPart(path, from, from, to, method ?? DownloadMethod.ByTime)];
+        };
+    public DownloadMethod? WorkingMethod { get; set; }
 
     public Task<NvrDeviceInfo> GetDeviceInfoAsync(CancellationToken ct) => Call("deviceInfo", DeviceInfo);
     public Task<DeviceClock> GetClockAsync(CancellationToken ct) => Call("time", Clock);
@@ -38,7 +42,14 @@ internal sealed class FakeNvr : INvrClient
     public Task<IReadOnlyList<RecordSegment>> SearchAsync(int channel, DateTime from, DateTime to, CancellationToken ct, StreamKind kind = StreamKind.Main) =>
         Call($"search {channel}", () => Search(channel));
     public Task<IReadOnlyList<DownloadedPart>> DownloadAsync(int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct) =>
-        Call($"download {channel} {from:HH:mm:ss}-{to:HH:mm:ss}", () => { bytes?.Report(1234); return Download(channel, from, to, folder); });
+        Call($"download {channel} {from:HH:mm:ss}-{to:HH:mm:ss}", () =>
+        {
+            var parts = Download(null, from, to, folder, bytes, ct);
+            WorkingMethod = parts.FirstOrDefault()?.Method;
+            return parts;
+        });
+    public Task<IReadOnlyList<DownloadedPart>> DownloadWithAsync(DownloadMethod method, int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct) =>
+        Call($"downloadWith {method}", () => Download(method, from, to, folder, bytes, ct));
     public Task<TimeMode> ResolveTimeModeAsync(CancellationToken ct) => Call("timeMode", Mode);
 
     public string LiveUrl(int channel, StreamKind kind) =>
@@ -57,12 +68,29 @@ internal sealed class FakeNvr : INvrClient
     }
 }
 
-internal sealed class FakeNvrFactory(FakeNvr nvr) : INvrClientFactory
+internal sealed class FakeNvrFactory(FakeNvr nvr, bool diagnostics = true) : INvrClientFactory
 {
     public INvrClient Create(NvrConfig config, string password)
     {
         nvr.Password = password;
-        return nvr;
+        return diagnostics ? nvr : new PlainClient(nvr);
+    }
+
+    /// <summary>A client without INvrDiagnostics (only the contract every client has).</summary>
+    private sealed class PlainClient(FakeNvr n) : INvrClient
+    {
+        public NvrConfig Config => n.Config;
+        public Task<NvrDeviceInfo> GetDeviceInfoAsync(CancellationToken ct) => n.GetDeviceInfoAsync(ct);
+        public Task<DeviceClock> GetClockAsync(CancellationToken ct) => n.GetClockAsync(ct);
+        public Task<IReadOnlyList<ChannelInfo>> GetChannelsAsync(CancellationToken ct) => n.GetChannelsAsync(ct);
+        public Task<IReadOnlyList<RecordSegment>> SearchAsync(int channel, DateTime from, DateTime to, CancellationToken ct, StreamKind kind = StreamKind.Main) =>
+            n.SearchAsync(channel, from, to, ct, kind);
+        public Task<IReadOnlyList<DownloadedPart>> DownloadAsync(int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct) =>
+            n.DownloadAsync(channel, from, to, folder, bytes, ct);
+        public string LiveUrl(int channel, StreamKind kind) => n.LiveUrl(channel, kind);
+        public string PlaybackUrl(int channel, DateTime from, DateTime? to = null, StreamKind kind = StreamKind.Main) => n.PlaybackUrl(channel, from, to, kind);
+        public Task<TimeMode> ResolveTimeModeAsync(CancellationToken ct) => n.ResolveTimeModeAsync(ct);
+        public void Dispose() => n.Dispose();
     }
 }
 

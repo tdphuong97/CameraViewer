@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Mock recorder tests: unit tests of its parts plus the real Cv.Core client and the probe against it over loopback.
+       Not in CameraViewer.sln; build.ps1 runs it. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MockNvr\MockNvr.csproj" />
+    <ProjectReference Include="..\..\src\Cv.Core\Cv.Core.csproj" />
+    <ProjectReference Include="..\..\src\Cv.Diagnostics\Cv.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

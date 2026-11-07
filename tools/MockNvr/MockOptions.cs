@@ -9,7 +9,7 @@ public enum TimeWriteMode
     LocalZ,
     /// <summary>Real UTC with "Z" (some newer firmware).</summary>
     Utc,
-    /// <summary>Local wall clock with an explicit offset such as +07:00 in search results; URIs stay local with "Z".</summary>
+    /// <summary>Time-zone aware firmware: search results in local time with an explicit offset (+07:00); "Z" in requests and playback URIs is real UTC.</summary>
     Offset,
 }
 

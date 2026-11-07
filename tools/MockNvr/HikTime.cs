@@ -16,13 +16,13 @@ public sealed partial class HikTime(MockClock clock, TimeWriteMode mode)
         _ => local.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
     };
 
-    /// <summary>Playback URIs: "20261107T100000Z", UTC only in Utc mode.</summary>
+    /// <summary>Playback URIs: "20261107T100000Z"; local wall clock in LocalZ mode, real UTC otherwise.</summary>
     public string FormatCompact(DateTime local) =>
-        (mode == TimeWriteMode.Utc ? clock.ToUtc(local) : local).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+        (mode == TimeWriteMode.LocalZ ? local : clock.ToUtc(local)).ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Lenient parse of an ISO or compact time. An explicit offset is honored; "Z" means UTC only in Utc mode (the
-    /// LocalZ and Offset firmware treat it as local wall clock); no designator = local.
+    /// Lenient parse of an ISO or compact time. An explicit offset is honored; "Z" is local wall clock for LocalZ
+    /// firmware and real UTC for the time-zone aware ones (Utc, Offset); no designator = local.
     /// </summary>
     public bool TryParse(string? text, out DateTime local)
     {
@@ -39,7 +39,7 @@ public sealed partial class HikTime(MockClock clock, TimeWriteMode mode)
                 DateTimeKind.Unspecified);
             var zone = m.Groups["z"].Value;
             if (zone is "Z" or "z")
-                local = mode == TimeWriteMode.Utc ? clock.ToLocal(t) : t;
+                local = mode == TimeWriteMode.LocalZ ? t : clock.ToLocal(t);
             else if (zone.Length > 0)
             {
                 var offset = MockOptions.ParseOffset(zone);

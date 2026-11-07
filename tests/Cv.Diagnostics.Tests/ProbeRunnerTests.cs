@@ -29,8 +29,8 @@ public sealed class ProbeRunnerTests : IDisposable
         try { Directory.Delete(_dir, true); } catch (IOException) { }
     }
 
-    private Task<ProbeReport> RunAsync(CancellationToken ct = default, List<string>? progress = null) =>
-        new ProbeRunner(new FakeNvrFactory(_nvr), _video, _media) { Time = new FixedTime(Started), Timeouts = Fast }
+    private Task<ProbeReport> RunAsync(CancellationToken ct = default, List<string>? progress = null, bool diagnostics = true) =>
+        new ProbeRunner(new FakeNvrFactory(_nvr, diagnostics), _video, _media) { Time = new FixedTime(Started), Timeouts = Fast }
             .RunAsync(new NvrConfig { Host = FakeNvr.Host, User = "admin" }, Password, _dir,
                 progress is null ? null : new InlineProgress(progress), ct);
 
@@ -63,19 +63,22 @@ public sealed class ProbeRunnerTests : IDisposable
         Assert.False(_video.Created[2].Options.IsLive);
         Assert.All(_video.Created, s => Assert.True(s.Disposed));
 
-        // The window is 10 s inside a finished file, exported over ISAPI and recorded over RTSP.
-        var download = Assert.Single(_nvr.Calls, c => c.StartsWith("download", StringComparison.Ordinal));
+        // The window is 10 s inside a finished file: exported as the app does, then by each ISAPI method, then over RTSP.
+        var download = Assert.Single(_nvr.Calls, c => c.StartsWith("download ", StringComparison.Ordinal));
         var parts = download.Split(' ')[2].Split('-');
         Assert.Equal(TimeSpan.FromSeconds(10), TimeSpan.Parse(parts[1]) - TimeSpan.Parse(parts[0]));
-        Assert.Single(_media.Remuxed);
+        Assert.Equal(["downloadWith ByTime", "downloadWith BySegmentRange", "downloadWith BySegmentWhole"],
+            _nvr.Calls.Where(c => c.StartsWith("downloadWith", StringComparison.Ordinal)));
+        Assert.Equal(4, _media.Remuxed.Count);
         Assert.Single(_media.Recorded);
+        Assert.Contains("[ByTime: được, BySegmentRange: được, BySegmentWhole: được]", r.Text);
         Assert.True(_nvr.Disposed);
     }
 
     [Fact]
     public async Task Password_is_never_written_even_when_an_error_contains_it()
     {
-        _nvr.Download = (_, _, _, _) =>
+        _nvr.Download = (_, _, _, _, _, _) =>
             throw new IOException($"connection reset rtsp://admin:{Uri.EscapeDataString(Password)}@{FakeNvr.Host}/x password was {Password}");
 
         var r = await RunAsync();
@@ -122,7 +125,7 @@ public sealed class ProbeRunnerTests : IDisposable
     [Fact]
     public async Task Isapi_download_unsupported_falls_back_to_rtsp_record()
     {
-        _nvr.Download = (_, _, _, _) => throw new NvrDownloadUnsupportedException("Đầu ghi không cho tải video qua mạng.");
+        _nvr.Download = (_, _, _, _, _, _) => throw new NvrDownloadUnsupportedException("Đầu ghi không cho tải video qua mạng.");
 
         var r = await RunAsync();
 
@@ -138,8 +141,10 @@ public sealed class ProbeRunnerTests : IDisposable
     [Fact]
     public async Task Whole_segment_download_is_trimmed_like_the_export_and_still_passes()
     {
-        _nvr.Download = (_, from, to, folder) =>
+        // A recorder that only serves whole files: ByTime and BySegmentRange refused.
+        _nvr.Download = (method, from, to, folder, _, _) =>
         {
+            if (method is DownloadMethod.ByTime or DownloadMethod.BySegmentRange) throw new NvrDownloadUnsupportedException("refused");
             var path = Path.Combine(folder, "seg.ps");
             File.WriteAllBytes(path, [(byte)'I', (byte)'M', (byte)'K', (byte)'H']);
             return [new DownloadedPart(path, from.AddMinutes(-30), from, to, DownloadMethod.BySegmentWhole)];
@@ -149,14 +154,60 @@ public sealed class ProbeRunnerTests : IDisposable
         var r = await RunAsync();
 
         Assert.True(r.Passed, r.Text);
-        var part = Assert.Single(Assert.Single(_media.Remuxed));
-        Assert.Equal(TimeSpan.FromMinutes(30), part.From);
-        Assert.Equal(TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(10), part.To);
+        Assert.Equal(2, _media.Remuxed.Count); // the app's export and the forced BySegmentWhole
+        Assert.All(_media.Remuxed, parts =>
+        {
+            var part = Assert.Single(parts);
+            Assert.Equal(TimeSpan.FromMinutes(30), part.From);
+            Assert.Equal(TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(10), part.To);
+        });
         var fails = Lines(r, "FAIL");
-        Assert.Contains(fails, l => l.Contains("cách ByTime"));
-        Assert.Contains(fails, l => l.Contains("cách BySegmentRange"));
+        Assert.Contains(fails, l => l.Contains("cách ByTime") && l.Contains("từ chối"));
+        Assert.Contains(fails, l => l.Contains("cách BySegmentRange") && l.Contains("từ chối"));
         Assert.Contains(Lines(r, "PASS"), l => l.Contains("cách BySegmentWhole"));
         Assert.Contains("tải qua ISAPI (cách BySegmentWhole)", r.Text);
+    }
+
+    [Fact]
+    public async Task Segment_range_answered_with_a_whole_file_is_stopped_early_and_flagged()
+    {
+        _nvr.Download = (method, from, to, folder, bytes, ct) =>
+        {
+            if (method == DownloadMethod.BySegmentRange)
+            {
+                bytes?.Report(100L * 1024 * 1024); // the cap cancels the token
+                ct.ThrowIfCancellationRequested();
+                throw new InvalidOperationException("the probe should have stopped this download");
+            }
+            var path = Path.Combine(folder, "p.ps");
+            File.WriteAllBytes(path, [(byte)'I', (byte)'M', (byte)'K', (byte)'H']);
+            return [new DownloadedPart(path, from, from, to, method ?? DownloadMethod.ByTime)];
+        };
+
+        var r = await RunAsync();
+
+        Assert.True(r.Passed, r.Text); // per-method lines are information
+        Assert.Contains(Lines(r, "FAIL"), l => l.Contains("cách BySegmentRange") && l.Contains("có vẻ trả cả đoạn"));
+        Assert.Contains("BySegmentRange: trả cả đoạn", r.Text);
+    }
+
+    [Fact]
+    public async Task Without_diagnostics_the_methods_are_inferred_from_the_one_that_worked()
+    {
+        _nvr.Download = (method, from, to, folder, _, _) =>
+        {
+            var path = Path.Combine(folder, "p.ps");
+            File.WriteAllBytes(path, [(byte)'I', (byte)'M', (byte)'K', (byte)'H']);
+            return [new DownloadedPart(path, from, from, to, DownloadMethod.BySegmentRange)];
+        };
+
+        var r = await RunAsync(diagnostics: false);
+
+        Assert.True(r.Passed, r.Text);
+        Assert.DoesNotContain(_nvr.Calls, c => c.StartsWith("downloadWith", StringComparison.Ordinal));
+        Assert.Contains(Lines(r, "FAIL"), l => l.Contains("cách ByTime"));
+        Assert.Contains(Lines(r, "PASS"), l => l.Contains("cách BySegmentRange"));
+        Assert.Contains(Lines(r, "SKIP"), l => l.Contains("cách BySegmentWhole"));
     }
 
     [Fact]

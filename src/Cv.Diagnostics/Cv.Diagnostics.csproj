@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Cv.Diagnostics.Tests" />
+    <InternalsVisibleTo Include="MockNvr.Tests" />
   </ItemGroup>
 
 </Project>
