@@ -12,9 +12,9 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- Demo frame drawing and LibraryImport interop. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Low RAM (measured, see report): workstation GC without the background GC thread, no tiered PGO instrumentation. -->
+    <!-- Measured with 20 demo tiles (2026-11-07): non-concurrent GC and GC ConserveMemory made no difference beyond noise;
+         TieredPGO off gave the lowest steady RAM and ~10 % less CPU, so only that stays. Workstation GC as before. -->
     <ServerGarbageCollector>false</ServerGarbageCollector>
-    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
   </PropertyGroup>
 
