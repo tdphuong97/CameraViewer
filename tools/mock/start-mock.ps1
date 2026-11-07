@@ -85,7 +85,7 @@ foreach ($c in $clips) {
     $out = Join-Path $data $c.File
     if ((Test-Path $out) -and -not $NewClips) { continue }
     "Making $($c.File) (once)..."
-    $argLine = "-hide_banner -loglevel error -y -f lavfi -i testsrc2=size=1280x720:rate=15 -t 60 -vf `"$recText`" -pix_fmt yuv420p $($c.Args) `"$out`""
+    $argLine = "-hide_banner -nostdin -loglevel error -y -f lavfi -i testsrc2=size=1280x720:rate=15 -t 60 -vf `"$recText`" -pix_fmt yuv420p $($c.Args) `"$out`""
     $p = Start-Process -FilePath $ffmpeg -ArgumentList $argLine -NoNewWindow -Wait -PassThru -RedirectStandardError (Join-Path $logs 'clips.log')
     if ($p.ExitCode -ne 0 -or -not (Test-Path $out)) { throw "ffmpeg could not make $($c.File); see $(Join-Path $logs 'clips.log')" }
 }
@@ -122,7 +122,7 @@ foreach ($n in 1..17) {
 }
 # Recorded playback: any track, started on demand from the looped clip (starttime/endtime are ignored).
 [void]$paths.AppendLine('  "~^Streaming/tracks/[0-9]+$":')
-[void]$paths.AppendLine("    runOnDemand: '`"$ffmpegFwd`" -hide_banner -loglevel error -re -stream_loop -1 -i `"$playClip`" -c copy -f rtsp -rtsp_transport tcp $src/`$MTX_PATH'")
+[void]$paths.AppendLine("    runOnDemand: '`"$ffmpegFwd`" -hide_banner -nostdin -loglevel error -re -stream_loop -1 -i `"$playClip`" -c copy -f rtsp -rtsp_transport tcp $src/`$MTX_PATH'")
 [void]$paths.AppendLine('    runOnDemandRestart: true')
 [void]$paths.AppendLine('    runOnDemandStartTimeout: 15s')
 [void]$paths.AppendLine('    runOnDemandCloseAfter: 5s')
@@ -162,6 +162,7 @@ rtmp: false
 hls: false
 webrtc: false
 srt: false
+moq: false
 paths:
 $($paths.ToString())
 "@
@@ -170,8 +171,13 @@ $yml = Join-Path $data 'mediamtx.yml'
 
 $started = @()
 function Start-Logged([string]$name, [string]$exe, [string]$argLine) {
-    $p = Start-Process -FilePath $exe -ArgumentList $argLine -WorkingDirectory $data -WindowStyle Hidden -PassThru `
-        -RedirectStandardOutput (Join-Path $logs "$name.log") -RedirectStandardError (Join-Path $logs "$name.err.log")
+    # Through cmd.exe launched by the shell (no handle inheritance; cmd writes the logs): with Start-Process
+    # -RedirectStandardOutput the background processes would inherit every open handle of this script, and a caller
+    # that captures its output would wait until stop-mock.ps1. The recorded PID is cmd's; stop-mock kills the tree.
+    $out = Join-Path $logs "$name.log"
+    $err = Join-Path $logs "$name.err.log"
+    $p = Start-Process -FilePath $env:ComSpec -ArgumentList "/d /c `"`"$exe`" $argLine 1>`"$out`" 2>`"$err`"`"" `
+        -WorkingDirectory $data -WindowStyle Hidden -PassThru
     $script:started += [pscustomobject]@{ name = $name; pid = $p.Id; start = $p.StartTime.ToFileTimeUtc() }
     Save-State
     return $p
@@ -193,21 +199,25 @@ try {
     $clock = "drawtext=fontfile=${font}:fontsize={0}:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw={1}:x={1}:y={1}:text='{2} %{{localtime\:%Y-%m-%d %T}}'"
     $mainVf = [string]::Format($clock, 40, 12, 'MAIN')
     $subVf = [string]::Format($clock, 22, 6, 'SUB')
-    Start-Logged 'publisher-main' $ffmpeg ("-hide_banner -loglevel warning -re -f lavfi -i testsrc2=size=1280x720:rate=15 -vf `"$mainVf`" -pix_fmt yuv420p " +
+    Start-Logged 'publisher-main' $ffmpeg ("-hide_banner -nostdin -loglevel warning -re -f lavfi -i testsrc2=size=1280x720:rate=15 -vf `"$mainVf`" -pix_fmt yuv420p " +
         "-c:v libx265 -preset ultrafast -tune zerolatency -b:v 1000k -x265-params keyint=30:min-keyint=30:bframes=0:repeat-headers=1:log-level=error " +
         "-f rtsp -rtsp_transport tcp $src/live/main") | Out-Null
-    Start-Logged 'publisher-sub' $ffmpeg ("-hide_banner -loglevel warning -re -f lavfi -i testsrc2=size=640x360:rate=15 -vf `"$subVf`" -pix_fmt yuv420p " +
+    Start-Logged 'publisher-sub' $ffmpeg ("-hide_banner -nostdin -loglevel warning -re -f lavfi -i testsrc2=size=640x360:rate=15 -vf `"$subVf`" -pix_fmt yuv420p " +
         "-c:v libx264 -preset ultrafast -tune zerolatency -profile:v main -b:v 384k -g 30 -keyint_min 30 -bf 0 " +
         "-f rtsp -rtsp_transport tcp $src/live/sub") | Out-Null
 
     # ---- MockNvr ----
     $mockBin = Join-Path $mockDir 'bin\MockNvr'
     'Building MockNvr...'
-    & dotnet publish (Join-Path $repo 'tools\MockNvr\MockNvr.csproj') -c Release -o $mockBin --nologo -v q | Out-Null
-    if ($LASTEXITCODE) { throw 'MockNvr build failed.' }
-    $mockArgs = "--bind $bind --port $HttpPort --password `"$Password`" --time-mode $TimeMode --download $Download " +
+    # No build servers: they outlive this script and would keep a piped caller's output open.
+    $buildLog = & dotnet publish (Join-Path $repo 'tools\MockNvr\MockNvr.csproj') -c Release -o $mockBin --nologo -v q --disable-build-servers 2>&1
+    if ($LASTEXITCODE) { throw "MockNvr build failed:`n$($buildLog -join "`n")" }
+    # The password goes through the environment: never on a command line (cmd would also expand % in it).
+    $mockArgs = "--bind $bind --port $HttpPort --time-mode $TimeMode --download $Download " +
         "--download-codec $DownloadCodec --download-mbps $DownloadMbps --rtsp-port $RtspPort --data `"$data`""
-    Start-Logged 'mocknvr' (Join-Path $mockBin 'MockNvr.exe') $mockArgs | Out-Null
+    $env:MOCKNVR_PASSWORD = $Password
+    try { Start-Logged 'mocknvr' (Join-Path $mockBin 'MockNvr.exe') $mockArgs | Out-Null }
+    finally { Remove-Item Env:MOCKNVR_PASSWORD -ErrorAction SilentlyContinue }
     Wait-Port $HttpPort 20 'MockNvr' (Join-Path $logs 'mocknvr.log')
 
     # The publishers need a moment to connect; a dead one means a bad ffmpeg build or filter.

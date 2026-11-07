@@ -31,7 +31,8 @@ public sealed class MockOptions
     public string Bind { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 8080;
     public string User { get; set; } = "admin";
-    public string Password { get; set; } = "Mock@1234";
+    /// <summary>--password, else the MOCKNVR_PASSWORD environment variable (keeps it off command lines), else Mock@1234.</summary>
+    public string Password { get; set; } = Environment.GetEnvironmentVariable("MOCKNVR_PASSWORD") is { Length: > 0 } p ? p : "Mock@1234";
     public TimeWriteMode TimeMode { get; set; } = TimeWriteMode.LocalZ;
     public DownloadMode Download { get; set; } = DownloadMode.Honor;
     public VideoCodec DownloadCodec { get; set; } = VideoCodec.H265;
@@ -62,7 +63,7 @@ public sealed class MockOptions
           --bind <ip>              listen address (default 127.0.0.1; 0.0.0.0 for the LAN)
           --port <n>               HTTP port (default 8080)
           --user <name>            login (default admin)
-          --password <text>        password (default Mock@1234)
+          --password <text>        password (default: MOCKNVR_PASSWORD environment variable, else Mock@1234)
           --time-mode <m>          localz | utc | offset (default localz)
           --download <m>           honor | whole | xml-error (default honor)
           --download-codec <c>     h265 | h264 (default h265)

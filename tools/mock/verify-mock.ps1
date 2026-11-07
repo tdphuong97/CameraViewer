@@ -33,8 +33,14 @@ function Isapi([string]$method, [string]$path, [string]$bodyFile, [string]$outFi
 }
 
 function Probe([string]$target, [string[]]$extra) {
-    $out = & $ffprobe -v error @extra -show_entries 'stream=codec_type,codec_name,width,height,avg_frame_rate:format=format_name,duration' -of compact=p=0 $target 2>&1
-    return ($out | Out-String).Trim() -replace "`r?`n", ' | '
+    # ffprobe errors arrive on stderr: keep them as text (Windows PowerShell 5.1 would raise them) and hide the password.
+    $eap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $out = & $ffprobe -v error @extra -show_entries 'stream=codec_type,codec_name,width,height,avg_frame_rate:format=format_name,duration' -of compact=p=0 $target 2>&1 |
+            ForEach-Object { "$_" }
+    } finally { $ErrorActionPreference = $eap }
+    return (($out | Out-String).Trim() -replace "`r?`n", ' | ').Replace($enc, '***')
 }
 
 # ---- ISAPI GETs ----
@@ -105,10 +111,17 @@ foreach ($d in @(
     $ps = Join-Path $work "$($d.Verb)-$($d.Name.Split(' ')[2]).ps"
     $code = Isapi $d.Verb '/ISAPI/ContentMgmt/download' $req $ps
     $head = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($ps), 0, [Math]::Min(4, (Get-Item $ps).Length))
-    if ($s.download -ne 'honor') { Report ($head -ne 'IMKH') "$($d.Name) ($($s.download) mode)" "HTTP $code, starts with '$head'"; continue }
-    $info = Probe $ps @()
+    $info = if ($head -eq 'IMKH') { Probe $ps @() } else { '' }
     $dur = [regex]::Match($info, 'duration=([\d.]+)').Groups[1].Value
-    $ok = $code -eq 200 -and $head -eq 'IMKH' -and $info -match "codec_name=$wantCodec" -and $info -match 'format_name=mpeg' -and [double]$dur -ge 9 -and [double]$dur -le 11
+    if ($s.download -eq 'xml-error') { Report ($head -ne 'IMKH') "$($d.Name) (xml-error mode)" "HTTP $code, starts with '$head'"; continue }
+    if ($s.download -eq 'whole') {
+        # Time-only URIs refused; segment URIs answered with the whole file whatever starttime/endtime say.
+        if ($d.Uri -eq $timeUri) { Report ($head -ne 'IMKH') "$($d.Name) (whole mode)" "HTTP $code, refused" }
+        else { Report ($code -eq 200 -and [double]$dur -gt 600) "$($d.Name) (whole mode)" "HTTP $code, $([Math]::Round((Get-Item $ps).Length / 1MB)) MB, $info" }
+        Remove-Item $ps
+        continue
+    }
+    $ok =$code -eq 200 -and $head -eq 'IMKH' -and $info -match "codec_name=$wantCodec" -and $info -match 'format_name=mpeg' -and [double]$dur -ge 9 -and [double]$dur -le 11
     Report $ok $d.Name "HTTP $code, $([Math]::Round((Get-Item $ps).Length / 1KB)) KB, $info"
 }
 
@@ -118,12 +131,16 @@ foreach ($r in @(
         @{ Name = 'RTSP live sub (ch 17)'; Url = "$rtsp/Streaming/Channels/1702"; Want = 'codec_name=h264|width=640' },
         @{ Name = 'RTSP live main (ch 1)'; Url = "$rtsp/Streaming/Channels/101"; Want = 'codec_name=hevc|width=1280' },
         @{ Name = 'RTSP playback (ch 3)'; Url = "$rtsp/Streaming/tracks/301?starttime=$pb"; Want = 'codec_name=hevc|width=1280' })) {
-    $info = Probe $r.Url @('-rtsp_transport', 'tcp', '-rw_timeout', '15000000')
-    $ok = ($r.Want.Split('|') | Where-Object { $info -notmatch [regex]::Escape($_) }).Count -eq 0
-    Report $ok $r.Name ($info -replace [regex]::Escape($enc), '***')
+    # Channel paths start their proxy on the first reader: one retry covers that cold start.
+    foreach ($try in 1, 2) {
+        $info = Probe $r.Url @('-rtsp_transport', 'tcp', '-rw_timeout', '15000000')
+        $ok = @($r.Want.Split('|') | Where-Object { $info -notmatch [regex]::Escape($_) }).Count -eq 0
+        if ($ok) { break }
+    }
+    Report $ok $r.Name $(if ($try -gt 1) { "(2nd try) $info" } else { $info })
 }
 $info = Probe "$rtsp/Streaming/Channels/501" @('-rtsp_transport', 'tcp', '-rw_timeout', '5000000')
-Report ($info -notmatch 'codec_name') 'RTSP offline channel 5 refused' (($info -replace [regex]::Escape($enc), '***') -replace '\s+', ' ')
+Report ($info -notmatch 'codec_name') 'RTSP offline channel 5 refused' ($info -replace '\s+', ' ')
 
 Remove-Item -Recurse -Force $work
 ''

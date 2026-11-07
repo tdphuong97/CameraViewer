@@ -129,7 +129,9 @@ Tuỳ chọn của `start-mock.ps1` để thử các kiểu firmware:
 - `-Download honor` (cắt đúng khoảng yêu cầu), `whole` (từ chối địa chỉ chỉ có giờ, trả cả file 1 giờ cho địa chỉ có `name=`, như một số firmware), `xml-error` (trả HTTP 200 kèm lỗi XML: không tải được cách nào, phần mềm phải ghi lại qua RTSP).
 - `-DownloadCodec h265|h264`, `-DownloadMbps <n>` (giới hạn tốc độ tải để xem thanh tiến độ), `-HttpPort`, `-RtspPort`, `-Password`, `-Lan` (cho máy khác trong mạng vào), `-NewClips` (tạo lại đoạn mẫu).
 
-Chỉ chạy phần ISAPI: `dotnet run --project tools\MockNvr -- --port 8080 --time-mode utc --download whole` (`--help` để xem mọi tuỳ chọn). Mỗi yêu cầu in một dòng (giờ, IP, lệnh, mã trả về, dung lượng, kết quả đăng nhập; không bao giờ in mật khẩu); khi chạy bằng `start-mock.ps1` các dòng này nằm trong `tools\mock\data\logs\mocknvr.log`. Test của đầu ghi giả (kể cả phần giao tiếp ISAPI thật của phần mềm và chẩn đoán chạy trên đầu ghi giả): `dotnet test tools\MockNvr.Tests`.
+Chỉ chạy phần ISAPI: `dotnet run --project tools\MockNvr -- --port 8080 --time-mode utc --download whole` (`--help` để xem mọi tuỳ chọn). Mỗi yêu cầu in một dòng (giờ, IP, lệnh, mã trả về, dung lượng, kết quả đăng nhập; không bao giờ in mật khẩu); khi chạy bằng `start-mock.ps1` các dòng này nằm trong `tools\mock\data\logs\mocknvr.log`. Test của đầu ghi giả (kể cả phần giao tiếp ISAPI thật của phần mềm và chẩn đoán chạy trên đầu ghi giả): `dotnet test tools\MockNvr.Tests`. Khi đầu ghi giả đang chạy bằng `start-mock.ps1`, đặt `CV_MOCK_E2E=1` rồi chạy lại lệnh đó để chạy cả chẩn đoán đầy đủ qua RTSP thật (MediaMTX) và FFmpeg.
+
+Khác đầu ghi thật: phần RTSP (MediaMTX) không nhận đường dẫn kết thúc bằng dấu `/` như `.../Streaming/tracks/101/?starttime=...` (đầu ghi thật nhận được); phần mềm luôn tạo địa chỉ xem lại không có dấu `/` đó. Video xem lại và video tải về là đoạn mẫu lặp lại, chữ trên hình là thời gian trong đoạn mẫu chứ không phải giờ yêu cầu.
 
 ## Giấy phép
 
