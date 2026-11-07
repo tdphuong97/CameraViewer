@@ -173,6 +173,35 @@ public class VideoSourceTests : IDisposable
         Assert.Equal(VideoState.Playing, s.State);
     }
 
+    private static readonly Lazy<string> Wide1080 = new(() =>
+    {
+        var file = Path.Combine(TestEnv.NewTempDir(), "wide.mp4");
+        TestEnv.RunFFmpeg("-f lavfi -i testsrc2=size=1920x1080:rate=15:duration=3 -pix_fmt yuv420p -c:v libx265 -preset ultrafast " +
+            "-x265-params keyint=15:bframes=0:log-level=error -tag:v hvc1 \"" + file + "\"");
+        return file;
+    });
+
+    [GplFact]
+    public async Task Wide_stream_uses_the_shared_d3d11va_device_unless_off()
+    {
+        var hw = _factory.Create(new VideoSourceOptions { Url = Wide1080.Value, IsLive = false, TargetWidth = 640, TargetHeight = 360 });
+        var sw = _factory.Create(new VideoSourceOptions { Url = Wide1080.Value, IsLive = false, HwDecode = HwDecodeMode.Off });
+        _sources.Add(hw);
+        _sources.Add(sw);
+        hw.Start();
+        sw.Start();
+        var f = await Wait.NextFrame(hw);
+        Assert.Equal((640, 360), (f.W, f.H));
+        var g = await Wait.NextFrame(sw);
+        Assert.Equal((1920, 1080), (g.W, g.H));
+        Assert.False(sw.Stats.HardwareDecoding);
+        // On a machine without D3D11 video decoding the device is not created and Auto falls back to software.
+        Assert.Equal(_factory.HardwareDeviceCreated, hw.Stats.HardwareDecoding);
+        var snap = await hw.CaptureAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Equal((1920, 1080), (snap.Width, snap.Height));
+        Assert.True(await Wait.ForState(hw, VideoState.Ended, 10));
+    }
+
     [NativeFact]
     public void Factory_requires_ffmpeg_and_validates_folder()
     {

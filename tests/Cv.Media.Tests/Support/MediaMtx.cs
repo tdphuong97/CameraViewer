@@ -27,6 +27,7 @@ public sealed class MediaMtx : IDisposable
         File.WriteAllText(yml, $"""
             logLevel: warn
             logDestinations: [stdout]
+            readTimeout: 60s
             api: false
             metrics: false
             pprof: false
@@ -76,6 +77,19 @@ public sealed class MediaMtx : IDisposable
         var p = Start(TestEnv.GplFFmpegExe,
             $"-hide_banner -loglevel error -re -stream_loop -1 -i \"{clip}\" -map 0:v -c copy -f rtsp -rtsp_transport tcp rtsp://{PubUser}:{PubPassword}@127.0.0.1:{Port}/{path}");
         _publishers[path] = p;
+    }
+
+    [System.Runtime.InteropServices.DllImport("ntdll.dll")]
+    private static extern int NtSuspendProcess(IntPtr process);
+
+    [System.Runtime.InteropServices.DllImport("ntdll.dll")]
+    private static extern int NtResumeProcess(IntPtr process);
+
+    /// <summary>Freezes / thaws a publisher: the RTSP session stays open but no data flows (a stalled stream).</summary>
+    public void FreezePublisher(string path, bool frozen)
+    {
+        var p = _publishers[path];
+        if (frozen) NtSuspendProcess(p.Handle); else NtResumeProcess(p.Handle);
     }
 
     public void StopPublisher(string path)
@@ -130,7 +144,7 @@ public sealed class MediaMtx : IDisposable
 
     private static void Kill(Process p)
     {
-        try { if (!p.HasExited) { p.Kill(true); p.WaitForExit(5000); } }
+        try { if (!p.HasExited) { NtResumeProcess(p.Handle); p.Kill(true); p.WaitForExit(5000); } }
         catch (InvalidOperationException) { }
         p.Dispose();
     }

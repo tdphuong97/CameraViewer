@@ -65,6 +65,7 @@ public class MemoryTests(ITestOutputHelper output)
             await Scenario("1 x 1280x720 H.265 -> 1600x900 (Auto: software, <= 1280 px)", 1, Url("main720", "main720.mp4"), HwDecodeMode.Auto, 1600, 900);
             await Scenario("1 x 1920x1080 H.265 -> 1600x900, software", 1, Url("main1080", "main1080.mp4"), HwDecodeMode.Off, 1600, 900);
             await Scenario("1 x 1920x1080 H.265 -> 1600x900, Auto (D3D11VA)", 1, Url("main1080", "main1080.mp4"), HwDecodeMode.Auto, 1600, 900);
+            await Cycles("open/close 20 x 640x360 tiles, 6 cycles of 4 s", Url("sub", "sub640.mp4"), 6);
         }
         finally
         {
@@ -72,9 +73,27 @@ public class MemoryTests(ITestOutputHelper output)
         }
     }
 
-    private async Task Scenario(string name, int count, string url, HwDecodeMode hw, int tw, int th)
+    private async Task Cycles(string name, string url, int cycles)
     {
         using var factory = new FFmpegVideoSourceFactory();
+        var mem = new List<string>();
+        for (int c = 0; c < cycles; c++)
+        {
+            var sources = Enumerable.Range(0, 20)
+                .Select(_ => factory.Create(new VideoSourceOptions { Url = url, IsLive = true, TargetWidth = 384, TargetHeight = 216 }))
+                .ToList();
+            foreach (var s in sources) s.Start();
+            await Task.Delay(4000);
+            foreach (var s in sources) s.Dispose();
+            await Task.Delay(1000);
+            mem.Add($"{Mb(TestEnv.Memory().PrivateBytes):F1}");
+        }
+        Line($"{name}: private bytes after each cycle (MB): {string.Join(", ", mem)}");
+    }
+
+    private async Task Scenario(string name, int count, string url, HwDecodeMode hw, int tw, int th)
+    {
+        var factory = new FFmpegVideoSourceFactory();
         await Task.Delay(500);
         var before = TestEnv.Memory();
         using var self = Process.GetCurrentProcess();
@@ -106,6 +125,10 @@ public class MemoryTests(ITestOutputHelper output)
         Line($"{name}: playing {playing}/{count}, {st.Codec} {st.Width}x{st.Height} {st.Fps:F1} fps {st.Kbps:F0} kbps hw={st.HardwareDecoding}, frames copied {copied}");
         Line($"   private bytes  {Mb(before.PrivateBytes),7:F1} -> {Mb(during.PrivateBytes),7:F1} MB (+{Mb(during.PrivateBytes - before.PrivateBytes):F1}, {Mb(during.PrivateBytes - before.PrivateBytes) / count:F1}/source); after dispose {Mb(after.PrivateBytes):F1} MB");
         Line($"   private WS     {Mb(before.PrivateWorkingSet),7:F1} -> {Mb(during.PrivateWorkingSet),7:F1} MB (+{Mb(during.PrivateWorkingSet - before.PrivateWorkingSet):F1}, {Mb(during.PrivateWorkingSet - before.PrivateWorkingSet) / count:F1}/source); after dispose {Mb(after.PrivateWorkingSet):F1} MB");
+        factory.Dispose();
+        await Task.Delay(1000);
+        var afterFactory = TestEnv.Memory();
+        Line($"   after factory dispose: private bytes {Mb(afterFactory.PrivateBytes):F1} MB, private WS {Mb(afterFactory.PrivateWorkingSet):F1} MB");
         Line($"   CPU {cpu * 100:F0} % of one core");
         Assert.Equal(count, playing);
     }

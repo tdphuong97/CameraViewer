@@ -18,6 +18,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private static readonly int[] BackoffSeconds = [1, 2, 5, 10];
     private const long MaxPacingGap = 3 * TimeSpan.TicksPerSecond;   // larger timestamp jumps are rebased, not waited for
     private const long MaxLate = TimeSpan.TicksPerSecond;
+    private const long MaxBackStep = TimeSpan.TicksPerSecond / 2;
     private const int HwWidthThreshold = 1280;
     private const string NoFrameMessage = "Chưa có hình để chụp";
 
@@ -67,6 +68,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private bool _hw;
     private bool _hwDisabled;
     private bool _everPlayed;
+    private bool _reanchor;
     private bool _gotHwFrame;
     private int _decodeErrors;
     private long _firstMedia = long.MinValue;
@@ -248,6 +250,12 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _irq.SetDeadline(ReadStall);
             r = ffmpeg.av_read_frame(_fmt, _pkt);
             _irq.ClearDeadline();
+            if (r >= 0 && _irq.TimedOut)
+            {
+                // The aborted read still hands out the parser's last buffered frame; the link is stalled all the same.
+                ffmpeg.av_packet_unref(_pkt);
+                r = ffmpeg.AVERROR_EXIT;
+            }
             if (r < 0)
             {
                 if (_stopping) return new Outcome(End.Stopped);
@@ -431,30 +439,8 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     /// <summary>1 shown, 0 skipped, -1 stop.</summary>
     private int Present(AVFrame* frame)
     {
-        AVFrame* src = frame;
-        bool hwFrame = frame->format == (int)AVPixelFormat.AV_PIX_FMT_D3D11;
-        if (hwFrame)
-        {
-            if (_swFrame->buf[0] != null && (_swFrame->width != frame->width || _swFrame->height != frame->height))
-                ffmpeg.av_frame_unref(_swFrame);
-            if (_last == _swFrame) _last = null;
-            int r = ffmpeg.av_hwframe_transfer_data(_swFrame, frame, 0);
-            if (r < 0)
-            {
-                ffmpeg.av_frame_unref(frame);
-                return SwitchToSoftware("transfer: " + FFmpegError.Describe(r)) ? 0 : -1;
-            }
-            _swFrame->colorspace = frame->colorspace;
-            _swFrame->color_range = frame->color_range;
-            _swFrame->sample_aspect_ratio = frame->sample_aspect_ratio;
-            _swFrame->best_effort_timestamp = frame->best_effort_timestamp;
-            _swFrame->pts = frame->pts;
-            ffmpeg.av_frame_unref(frame); // give the surface back to the decoder pool now
-            src = _swFrame;
-            _gotHwFrame = true;
-        }
-
-        long ts = src->best_effort_timestamp != ffmpeg.AV_NOPTS_VALUE ? src->best_effort_timestamp : src->pts;
+        // Pace on the decoded frame first: while waiting, the previous picture stays intact for capture/re-scale.
+        long ts = frame->best_effort_timestamp != ffmpeg.AV_NOPTS_VALUE ? frame->best_effort_timestamp : frame->pts;
         bool first = _firstMedia == long.MinValue;
         long media = ts != ffmpeg.AV_NOPTS_VALUE ? ffmpeg.av_rescale_q(ts, _timeBase, MediaUtil.TicksBase) : (first ? 0 : _firstMedia + _lastRel + _frameTicks);
         if (first)
@@ -463,6 +449,14 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _lastRel = 0;
             _clock.Rebase(0);
             if (_liveStart == 0) _liveStart = Stopwatch.GetTimestamp();
+        }
+        // FFmpeg restarts the RTP timestamp base on PLAY (after a pause), and a timeline never runs backwards in
+        // recorded playback: continue one frame after the last picture instead.
+        if (!first && (_reanchor || media - _firstMedia < _lastRel - MaxBackStep))
+        {
+            _reanchor = false;
+            _firstMedia = media - (_lastRel + _frameTicks);
+            _clock.Rebase(_lastRel + _frameTicks);
         }
         long rel = media - _firstMedia;
         if (!first && rel > _lastRel && rel - _lastRel < TimeSpan.TicksPerSecond) _frameTicks = rel - _lastRel;
@@ -474,6 +468,29 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             else if (due > 0 && !WaitUntilDue(rel)) return -1;
         }
         if (_stopping) return -1;
+
+        AVFrame* src = frame;
+        bool hwFrame = frame->format == (int)AVPixelFormat.AV_PIX_FMT_D3D11;
+        if (hwFrame)
+        {
+            if (_swFrame->buf[0] != null && (_swFrame->width != frame->width || _swFrame->height != frame->height))
+            {
+                if (_last == _swFrame) _last = null;
+                ffmpeg.av_frame_unref(_swFrame);
+            }
+            int r = ffmpeg.av_hwframe_transfer_data(_swFrame, frame, 0);
+            if (r < 0)
+            {
+                ffmpeg.av_frame_unref(frame);
+                return SwitchToSoftware("transfer: " + FFmpegError.Describe(r)) ? 0 : -1;
+            }
+            _swFrame->colorspace = frame->colorspace;
+            _swFrame->color_range = frame->color_range;
+            _swFrame->sample_aspect_ratio = frame->sample_aspect_ratio;
+            ffmpeg.av_frame_unref(frame); // give the surface back to the decoder pool now
+            src = _swFrame;
+            _gotHwFrame = true;
+        }
 
         // Position, stats and state first: whoever sees the frame also sees them.
         _lastRel = rel;
@@ -544,6 +561,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _irq.ClearDeadline();
             // A failed PLAY (session expired during a long pause) surfaces as a read error next.
             if (r < 0 && !_stopping) Log.Warn("RTSP PLAY failed: " + FFmpegError.Describe(r));
+            _reanchor = true;
         }
         _clock.Resume();
         SetState(VideoState.Playing, null);

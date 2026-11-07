@@ -48,6 +48,50 @@ public class LiveRtspTests(ITestOutputHelper output) : IDisposable
     }
 
     [MediaMtxFact]
+    public async Task Stalled_stream_is_detected_after_about_10_seconds()
+    {
+        var mtx = Own(new MediaMtx());
+        mtx.Publish("cam", TestClips.H264Mp4);
+        await Task.Delay(1500);
+        var s = Own(_factory.Create(new VideoSourceOptions { Url = mtx.ReaderUrl("cam"), IsLive = true }));
+        s.Start();
+        await Wait.NextFrame(s, 0, 15);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        mtx.FreezePublisher("cam", true); // session stays up, no packets
+        Assert.True(await Wait.ForState(s, VideoState.Reconnecting, 20), $"state {s.State}");
+        output.WriteLine($"stall detected after {sw.Elapsed.TotalSeconds:F1} s: '{s.Error}'");
+        Assert.InRange(sw.Elapsed.TotalSeconds, 8, 14);
+        mtx.FreezePublisher("cam", false);
+        Assert.True(await Wait.ForState(s, VideoState.Playing, 25), $"state {s.State} '{s.Error}'");
+    }
+
+    [MediaMtxFact]
+    public async Task Rtsp_pause_and_resume_for_recorded_playback()
+    {
+        var mtx = Own(new MediaMtx());
+        mtx.Publish("cam", TestClips.H264Mp4);
+        await Task.Delay(1500);
+        var s = Own(_factory.Create(new VideoSourceOptions { Url = mtx.ReaderUrl("cam"), IsLive = false }));
+        s.Start();
+        var f = await Wait.NextFrame(s, 0, 15);
+        await Task.Delay(1000);
+        s.Pause();
+        Assert.True(await Wait.ForState(s, VideoState.Paused));
+        var p = s.Position;
+        await Task.Delay(3000);
+        Assert.Equal(p, s.Position);
+        s.Resume();
+        Assert.True(await Wait.ForState(s, VideoState.Playing));
+        long seq = 0;
+        Wait.Grab(s, ref seq);
+        await Wait.NextFrame(s, seq, 5);
+        await Task.Delay(1000);
+        output.WriteLine($"position before pause {p.TotalSeconds:F2} s, after resume {s.Position.TotalSeconds:F2} s, state {s.State}");
+        Assert.InRange((s.Position - p).TotalSeconds, 0.5, 2.0); // continues from the paused picture
+        Assert.Equal(VideoState.Playing, s.State);
+    }
+
+    [MediaMtxFact]
     public async Task Wrong_password_against_real_server_fails()
     {
         var mtx = Own(new MediaMtx("digest"));

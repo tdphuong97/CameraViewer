@@ -150,7 +150,12 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
                 ct.ThrowIfCancellationRequested();
                 if (isLive) irq.SetDeadline(StreamStall);
                 int r = ffmpeg.av_read_frame(ic, pkt);
-                if (isLive) irq.ClearDeadline();
+                if (isLive)
+                {
+                    irq.ClearDeadline();
+                    // An aborted read can still return the parser's buffered frame: the link is stalled anyway.
+                    if (r >= 0 && irq.TimedOut) { ffmpeg.av_packet_unref(pkt); r = ffmpeg.AVERROR_EXIT; }
+                }
                 if (r == ffmpeg.AVERROR_EOF) break;
                 if (r == ffmpeg.AVERROR(ffmpeg.EAGAIN)) continue;
                 if (r < 0)
