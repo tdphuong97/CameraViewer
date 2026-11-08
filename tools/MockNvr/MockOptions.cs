@@ -59,6 +59,8 @@ public sealed class MockOptions
     public double DownloadMbps { get; set; }
     /// <summary>Adds a G.711 µ-law track to downloads, like most Hikvision recordings.</summary>
     public bool Audio { get; set; } = true;
+    /// <summary>false: eventRecordSearch answers 403 notSupport (a recorder without people search).</summary>
+    public bool People { get; set; } = true;
     public string Realm { get; set; } = MockDevice.Model;
     public bool Quiet { get; set; }
 
@@ -74,6 +76,9 @@ public sealed class MockOptions
           --download-codec <c>     h265 | h264 (default h265)
           --download-mbps <n>      throttle downloads (default 0 = no limit)
           --no-audio               downloads without the G.711 track
+          --no-people              people search (eventRecordSearch) answers notSupport; by default
+                                   channels 1, 3, 8, 14 log a person every few minutes from 06:00 to 22:00,
+                                   pictures at /picture/Streaming/tracks/<ch>03/?name=...
           --data <folder>          cached elementary streams (default <repo>\tools\mock\data)
           --rtsp-port <n>          RTSP port reported by the device (default 554)
           --utc-offset <+hh:mm>    device time zone (default: this PC's)
@@ -140,6 +145,7 @@ public sealed class MockOptions
                         break;
                     case "--download-mbps": o.DownloadMbps = double.Parse(Value(), CultureInfo.InvariantCulture); break;
                     case "--no-audio": o.Audio = false; break;
+                    case "--no-people": o.People = false; break;
                     case "--data": o.DataDir = Value(); break;
                     case "--rtsp-port": o.RtspPort = int.Parse(Value(), CultureInfo.InvariantCulture); break;
                     case "--utc-offset": o.UtcOffset = ParseOffset(Value()); break;

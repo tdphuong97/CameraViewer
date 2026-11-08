@@ -7,9 +7,9 @@ namespace Cv.Core.Hik;
 
 /// <summary>
 /// ISAPI client of one Hikvision NVR (HTTP digest) plus its RTSP URLs. Partial: search and time mode in
-/// HikNvrClient.Search.cs, download in HikNvrClient.Download.cs.
+/// HikNvrClient.Search.cs, download in HikNvrClient.Download.cs, people detections in HikNvrClient.Detections.cs.
 /// </summary>
-internal sealed partial class HikNvrClient : INvrClient, INvrDiagnostics
+internal sealed partial class HikNvrClient : INvrClient, INvrDiagnostics, INvrDetections
 {
     private readonly HttpClient? _http;
     private readonly string _password;

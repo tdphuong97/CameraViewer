@@ -8,7 +8,7 @@ namespace Cv.Core.Tests.Fakes;
 /// <summary>In-process fake of a Hikvision ISAPI endpoint. Routes by method + path (query ignored); can require Digest.</summary>
 public sealed class FakeIsapiHandler : HttpMessageHandler
 {
-    public sealed record Seen(HttpMethod Method, string PathAndQuery, string? Authorization, string Body);
+    public sealed record Seen(HttpMethod Method, string PathAndQuery, string? Authorization, string Body, string? ContentType = null, string? Host = null);
 
     public const string Realm = "DS-Fake";
     public const string Nonce = "abc";
@@ -80,7 +80,8 @@ public sealed class FakeIsapiHandler : HttpMessageHandler
         if (Delay > TimeSpan.Zero) await Task.Delay(Delay, ct);
         ct.ThrowIfCancellationRequested();
         var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
-        var seen = new Seen(request.Method, request.RequestUri!.PathAndQuery, request.Headers.Authorization?.ToString(), body);
+        var seen = new Seen(request.Method, request.RequestUri!.PathAndQuery, request.Headers.Authorization?.ToString(), body,
+            request.Content?.Headers.ContentType?.MediaType, request.RequestUri.Authority);
         lock (_lock) _requests.Add(seen);
 
         if (RequireDigest && !DigestOk(seen))

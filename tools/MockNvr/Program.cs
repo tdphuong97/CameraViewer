@@ -15,6 +15,7 @@ var clips = new ClipCache(dataDir);
 Console.WriteLine($"MockNvr {MockDevice.Model} on http://{o.Bind}:{o.Port}  user {o.User}  (password not shown)");
 Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
     $"  time mode {o.TimeMode}, device zone UTC{MockClock.FormatOffset(o.UtcOffset)}, download {o.Download} ({o.DownloadCodec}{(o.Audio ? " + G.711" : "")}{(o.DownloadMbps > 0 ? $", {o.DownloadMbps} Mbit/s" : "")})"));
+Console.WriteLine($"  people detection {(o.People ? "on channels " + string.Join(", ", PeopleStore.Channels) : "off (eventRecordSearch answers notSupport)")}");
 Console.WriteLine($"  lock-out after {o.MaxFailedLogins} wrong passwords for {o.LockDuration.TotalMinutes:0.#} min, nonce lifetime {o.NonceLifetime.TotalSeconds:0.#} s");
 Console.WriteLine($"  data {dataDir}");
 foreach (var c in new[] { VideoCodec.H265, VideoCodec.H264 })
