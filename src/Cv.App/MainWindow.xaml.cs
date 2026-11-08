@@ -465,7 +465,7 @@ public partial class MainWindow : Window, IShell
         if (!CaptureMode.Active && SafeJobs().Any(j => j.Status is ExportStatus.Queued or ExportStatus.Downloading or ExportStatus.Converting))
         {
             var answer = MessageBox.Show(this,
-                "Phần mềm đang lưu video. Nếu đóng bây giờ, video đang lưu sẽ bị hủy.\n\nVẫn đóng phần mềm?",
+                "Phần mềm đang trích xuất video. Nếu đóng bây giờ, video đang trích xuất sẽ bị hủy.\n\nVẫn đóng phần mềm?",
                 "Camera", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
             if (answer != MessageBoxResult.Yes)
             {

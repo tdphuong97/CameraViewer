@@ -27,6 +27,9 @@ internal static unsafe class FFmpegError
         return $"{Marshal.PtrToStringUTF8((IntPtr)buf)} ({code})";
     }
 
+    /// <summary>The socket timed out (FFmpeg's own "timeout" option), as opposed to a refused or reset link.</summary>
+    public static bool IsTimeout(int code) => -code is ETIMEDOUT or WSAETIMEDOUT;
+
     public static Failure Classify(int code)
     {
         if (code == ffmpeg.AVERROR_HTTP_UNAUTHORIZED) return Failure.Auth;

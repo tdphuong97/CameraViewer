@@ -17,17 +17,17 @@ Tìm hiện tượng hoặc đúng câu phần mềm báo trong bảng. Cột **
 | Mọi ô đều lỗi sau khi đổi mật khẩu đầu ghi | Phần mềm vẫn dùng mật khẩu cũ | Nhập mật khẩu mới trong **Cài đặt**, bấm **Kiểm tra kết nối**, rồi **Lưu** | IT |
 | Máy chạy chậm khi mở phần mềm | Máy yếu, đang xem lớn camera độ phân giải cao | Quay lại lưới; thử đặt **Giải mã bằng card đồ họa** là **Tự động** | Người xem, rồi IT |
 
-## Xem lại và lưu video
+## Xem lại và trích xuất video
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách làm | Ai làm |
 | --- | --- | --- | --- |
 | **Không có ghi hình lúc này** | Lịch ghi không ghi giờ đó, ổ cứng đầu ghi đầy hoặc hỏng | Chọn giờ nằm trên vạch xanh. Kéo dài nhiều ngày thì kiểm tra lịch ghi và ổ cứng | Người xem, rồi IT |
 | Giờ xem lại lệch vài tiếng so với thực tế | Múi giờ hoặc đồng hồ đầu ghi sai, hoặc firmware ghi giờ khác thường | Bật NTP và đặt đúng múi giờ trên đầu ghi; [Chạy chẩn đoán](chay-chan-doan.md) và gửi báo cáo | IT |
-| Lưu video rất chậm, mất đúng bằng độ dài đoạn video | Đầu ghi không cho tải video trực tiếp, phần mềm phải ghi lại trong lúc phát | Bật giao thức tích hợp và quyền tải video cho tài khoản; chạy chẩn đoán để biết đầu ghi hỗ trợ cách nào | IT |
+| Trích xuất video rất chậm, mất đúng bằng độ dài đoạn video | Đầu ghi không cho tải video trực tiếp, phần mềm phải ghi lại trong lúc phát | Bật giao thức tích hợp và quyền tải video cho tài khoản; chạy chẩn đoán để biết đầu ghi hỗ trợ cách nào | IT |
 | **Mất kết nối đầu ghi khi đang tải video** | Mạng chập chờn | Bấm **Thử lại** khi mạng ổn định | Người xem |
 | **Ổ đĩa đầy** | Ổ chứa thư mục video hết chỗ | Xoá hoặc chuyển bớt video cũ, rồi **Thử lại** | Người xem |
 | **Không thấy người nào trong ngày này.** dù có người qua lại | Camera chưa bật nhận người: phát hiện chuyển động đang tắt, vùng phát hiện chưa vẽ, hoặc mục tiêu chưa chọn người | Trên trang web của đầu ghi, mở phần phát hiện chuyển động của kênh đó (thường ở Cấu hình > Sự kiện; tên mục có thể khác theo firmware): bật, vẽ vùng, chọn mục tiêu **Người** (Human). Chạy chẩn đoán để xem kênh nào đã có lượt có người | IT |
-| Không có nút **Có người** | Đầu ghi không cho tìm sự kiện có người (đời cũ hoặc hãng khác) | Không cần làm gì; xem lại và lưu video vẫn bình thường | IT |
+| Không có nút **Có người** | Đầu ghi không cho tìm sự kiện có người (đời cũ hoặc hãng khác) | Không cần làm gì; xem lại và trích xuất video vẫn bình thường | IT |
 | Video lưu ra không có tiếng | Camera không thu tiếng, hoặc thu tiếng kiểu G.711 mà file MP4 không chứa được | Bình thường với đa số camera; hình vẫn đầy đủ | |
 
 ## Kết nối đầu ghi (bộ phận IT)

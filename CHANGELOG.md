@@ -1,3 +1,11 @@
+## 0.9.5
+
+- Mới: Có người ở màn Xem lại. Nút cạnh thanh thời gian cho biết số lượt camera thấy có người trong ngày; bấm vào để xem ảnh từng lượt (ảnh đầu ghi chụp), bấm ảnh để xem lại đúng lúc đó. Những lúc có người hiện thành vạch xanh lá trên thanh thời gian. Dùng sẵn phát hiện người của camera và đầu ghi, không tốn thêm bộ nhớ máy tính.
+- Nút Lưu video đổi tên thành Trích xuất video (nút trong bảng: Trích xuất).
+- Xem lại tới sát giờ hiện tại: hết đoạn ghi thì chuyển tiếp ngay hoặc báo Đã xem đến thời điểm mới nhất, không còn đứng hình rồi báo Mất kết nối đầu ghi (đầu ghi ngừng gửi mà không đóng luồng ở file đang ghi).
+- Cách dự phòng ghi lại qua RTSP lấy dư 5 giây ở cuối như tải theo giờ, và không còn báo lỗi khi đầu ghi ngừng gửi ở cuối đoạn.
+- Chạy chẩn đoán có thêm dòng Lúc có người (số lần trong 24 giờ, kênh nào có, thử tải một ảnh).
+
 ## 0.9.4
 
 - Lưu video dễ hơn: ở màn Xem lại chỉ còn một nút xanh Lưu video (cạnh Chụp ảnh). Bấm vào là có bảng ba bước đánh số bên cạnh video: 1 Từ lúc, 2 Đến lúc, 3 Lưu video. Bảng điền sẵn 5 phút quanh lúc đang xem (2 phút trước, 3 phút sau), nên phần lớn chỉ cần bấm Lưu video.

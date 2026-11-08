@@ -522,15 +522,16 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
             var mp4 = Path.Combine(_temp, "probe-rtsp.mp4");
             Directory.CreateDirectory(_temp);
             var url = "";
-            await Run($"Ghi lại {Seconds(to - from)} qua RTSP (cách dự phòng, chạy bằng thời gian thật)", T.Record + (to - from), async c =>
+            await Run($"Ghi lại {Seconds(to - from)} qua RTSP (cách dự phòng, chạy bằng thời gian thật)", T.Record + (to - from) + ExportService.RecordEndPad, async c =>
             {
-                url = nvr.PlaybackUrl(ch, from, to);
-                await owner._media.RecordAsync(url, to - from, mp4, null, c);
+                // As the export does: a little past the end (ExportService.RecordEndPad).
+                url = nvr.PlaybackUrl(ch, from, to + ExportService.RecordEndPad);
+                await owner._media.RecordAsync(url, to - from + ExportService.RecordEndPad, mp4, null, c);
                 return await owner._media.GetDurationAsync(mp4, c);
             }, d =>
             {
                 _rtspMp4 = d;
-                var (ok, text) = LengthVerdict(d, to - from, mp4);
+                var (ok, text) = LengthVerdict(d, to - from, mp4, to - from + ExportService.RecordEndPad);
                 return (ok, text + " | " + Log.Redact(url));
             });
         }

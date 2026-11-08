@@ -11,7 +11,7 @@ namespace Cv.App.Playback;
 
 /// <summary>
 /// Xem lại: one camera, one day. Pickers on top, the video, a big clock and transport, the 24 h timeline, and
-/// Lưu video: a panel beside the video with three numbered steps, prefilled around the moment on screen.
+/// Trích xuất video: a panel beside the video with three numbered steps, prefilled around the moment on screen.
 /// </summary>
 public partial class PlaybackView : UserControl, IPage
 {
@@ -310,7 +310,7 @@ public partial class PlaybackView : UserControl, IPage
             b.IsChecked = Math.Abs(len.TotalHours - int.Parse((string)b.Tag, System.Globalization.CultureInfo.InvariantCulture)) < 0.01;
     }
 
-    // ---- Lưu video ----
+    // ---- Trích xuất video (export a clip) ----
 
     static DateTime Whole(DateTime t) => new(t.Ticks - t.Ticks % TimeSpan.TicksPerSecond);
 

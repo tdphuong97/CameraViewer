@@ -9,7 +9,7 @@ using Cv.Core.Nvr;
 namespace Cv.App.Playback;
 
 /// <summary>
-/// "Lưu video" beside the playback video: three numbered steps (from, to, save), prefilled around the moment on screen.
+/// "Trích xuất video" beside the playback video: three numbered steps (from, to, save), prefilled around the moment on screen.
 /// The range is drawn on the timeline, whose handles can be dragged too; the video keeps playing next to it.
 /// </summary>
 public partial class SavePanel : UserControl
@@ -153,11 +153,11 @@ public partial class SavePanel : UserControl
         catch (Exception ex)
         {
             Log.Error("Export not queued", ex);
-            ShowError("Chưa lưu được đoạn video này. Hãy thử lại.");
+            ShowError("Chưa trích xuất được đoạn video này. Hãy thử lại.");
             return;
         }
         Close();
-        _shell.Toast("Đang lưu video… Xem ở mục Video đã lưu.", ToastKind.Info, "Xem", _shell.ShowSaved);
+        _shell.Toast("Đang trích xuất video… Xem ở mục Video đã lưu.", ToastKind.Info, "Xem", _shell.ShowSaved);
     }
 
     void ShowError(string text)

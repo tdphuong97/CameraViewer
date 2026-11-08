@@ -1,5 +1,5 @@
 ---
-description: Camera Viewer giúp xem trực tiếp, xem lại và lưu video camera của một đầu ghi Hikvision, nhẹ và dễ dùng.
+description: Camera Viewer giúp xem trực tiếp, xem lại và trích xuất video camera của một đầu ghi Hikvision, nhẹ và dễ dùng.
 ---
 
 # Hướng dẫn sử dụng Camera Viewer
@@ -10,7 +10,7 @@ description: Camera Viewer giúp xem trực tiếp, xem lại và lưu video cam
 
 | Vai trò | Làm được gì | Đọc từ |
 | --- | --- | --- |
-| **Người xem camera** | Xem trực tiếp, xem lại, chụp ảnh, lưu video | [Làm quen giao diện](bat-dau/lam-quen-giao-dien.md) |
+| **Người xem camera** | Xem trực tiếp, xem lại, chụp ảnh, trích xuất video | [Làm quen giao diện](bat-dau/lam-quen-giao-dien.md) |
 | **Bộ phận IT** | Cài phần mềm, kết nối đầu ghi, cập nhật, chạy chẩn đoán | [Cài đặt phần mềm](bat-dau/cai-dat-phan-mem.md) |
 
 Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu ghi: bộ phận IT nhập một lần, sau đó chỉ cần bấm biểu tượng là thấy camera.
@@ -42,13 +42,13 @@ Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu 
       <td><a href="xem-lai/tim-nguoi.md">tim-nguoi</a></td>
     </tr>
     <tr>
-      <td><strong>Lưu một đoạn video</strong></td>
-      <td>Bấm Lưu video, làm theo 3 bước đánh số.</td>
+      <td><strong>Trích xuất video</strong></td>
+      <td>Bấm Trích xuất video, làm theo 3 bước đánh số.</td>
       <td><a href="xem-lai/luu-doan-video.md">luu-doan-video</a></td>
     </tr>
     <tr>
       <td><strong>Xử lý sự cố</strong></td>
-      <td>Camera không lên hình, lưu video lỗi.</td>
+      <td>Camera không lên hình, trích xuất video lỗi.</td>
       <td><a href="tham-khao/xu-ly-su-co.md">xu-ly-su-co</a></td>
     </tr>
   </tbody>

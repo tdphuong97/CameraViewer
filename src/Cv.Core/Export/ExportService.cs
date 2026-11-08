@@ -11,6 +11,12 @@ namespace Cv.Core.Export;
 public sealed class ExportService : IExportService, IDisposable
 {
     public const double DownloadShare = 0.9;
+
+    /// <summary>
+    /// The RTSP fallback asks this much past the end: on the file it is still writing, DS-7732NI-M4 V5.04.081 stops
+    /// about 2 s short of the asked end (measured 2026-11-08), so the clip still holds every marked second.
+    /// </summary>
+    public static readonly TimeSpan RecordEndPad = TimeSpan.FromSeconds(5);
     /// <summary>Estimate before anything was measured: 4 Mbit/s of recording.</summary>
     internal const double DefaultBytesPerSecond = 4_000_000 / 8.0;
     public static readonly TimeSpan MaxLength = TimeSpan.FromHours(24);
@@ -240,10 +246,10 @@ public sealed class ExportService : IExportService, IDisposable
                 run.Rtsp = true;
                 Update(job, j => { j.Method = nameof(DownloadMethod.RtspRecord); j.Progress = 0; });
                 await nvr.ResolveTimeModeAsync(ct);
-                var url = nvr.PlaybackUrl(r.Channel, r.From, r.To);
+                var url = nvr.PlaybackUrl(r.Channel, r.From, r.To + RecordEndPad);
                 var recorded = Path.Combine(tempDir, "record.mp4");
                 Log.Info($"Export {job.Id}: recording {Log.Redact(url)}");
-                await _media.RecordAsync(url, r.To - r.From, recorded,
+                await _media.RecordAsync(url, r.To - r.From + RecordEndPad, recorded,
                     new SyncProgress<double>(p => SetProgress(job, run, 0.99 * Clamp01(p))), ct);
                 output = ReserveOutput(r);
                 File.Move(recorded, output);

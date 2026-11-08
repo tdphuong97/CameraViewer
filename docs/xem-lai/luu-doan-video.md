@@ -1,24 +1,24 @@
 ---
-description: Lưu một đoạn ghi hình ra file MP4 trong ba bước có đánh số - Từ lúc, Đến lúc, Lưu video.
+description: Trích xuất một đoạn ghi hình ra file MP4 trong ba bước có đánh số - Từ lúc, Đến lúc, Trích xuất.
 ---
 
-# Lưu một đoạn video
+# Trích xuất video
 
 **Ai làm:** Người xem camera · **Mất khoảng:** 1 phút, chưa tính thời gian tải
 
 {% hint style="info" %}
-**Trước khi bắt đầu:** mở camera cần lưu ở tab **Xem lại** và tìm tới đoạn cần lưu. Xem [Xem lại một camera](xem-lai-camera.md).
+**Trước khi bắt đầu:** mở camera cần lấy ở tab **Xem lại** và tìm tới đoạn cần lấy. Xem [Xem lại một camera](xem-lai-camera.md).
 {% endhint %}
 
 {% stepper %}
 {% step %}
-### Mở bảng Lưu video
+### Mở bảng Trích xuất video
 
-Khi đang xem tới đoạn cần lưu, bấm nút xanh **Lưu video** ở bên phải, cạnh nút **Chụp ảnh**. Bảng **Lưu video** mở ra bên phải hình; video vẫn chạy bên cạnh.
+Khi đang xem tới đoạn cần lấy, bấm nút xanh **Trích xuất video** ở bên phải, cạnh nút **Chụp ảnh**. Bảng **Trích xuất video** mở ra bên phải hình; video vẫn chạy bên cạnh.
 
-Bảng đã điền sẵn 5 phút quanh lúc đang xem: từ 2 phút trước đến 3 phút sau. Đoạn này hiện màu cam trên thanh thời gian. Đúng đoạn cần lưu thì bỏ qua bước 2, bấm luôn **Lưu video** (3) trong bảng.
+Bảng đã điền sẵn 5 phút quanh lúc đang xem: từ 2 phút trước đến 3 phút sau. Đoạn này hiện màu cam trên thanh thời gian. Đúng đoạn cần lấy thì bỏ qua bước 2, bấm luôn **Trích xuất** (3) trong bảng.
 
-<figure><img src="../.gitbook/assets/luu-doan-video-so.svg" alt="Bảng Lưu video bên phải video: (1) Từ lúc, (2) Đến lúc, (3) nút Lưu video"><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/luu-doan-video-so.svg" alt="Bảng Trích xuất video bên phải video: (1) Từ lúc, (2) Đến lúc, (3) nút Trích xuất"><figcaption></figcaption></figure>
 {% endstep %}
 
 {% step %}
@@ -33,9 +33,9 @@ Cũng có thể kéo hai đầu đoạn màu cam trên thanh thời gian. Dòng 
 {% endstep %}
 
 {% step %}
-### Bấm Lưu video trong bảng
+### Bấm Trích xuất
 
-Bấm **Lưu video** (3) trong bảng. Bảng đóng lại và thông báo **Đang lưu video… Xem ở mục Video đã lưu.** hiện ra. Bạn có thể tiếp tục xem camera trong lúc phần mềm lưu.
+Bấm **Trích xuất** (3) trong bảng. Bảng đóng lại và thông báo **Đang trích xuất video… Xem ở mục Video đã lưu.** hiện ra. Bạn có thể tiếp tục xem camera trong lúc phần mềm làm.
 {% endstep %}
 {% endstepper %}
 
@@ -45,9 +45,9 @@ Bấm **Lưu video** (3) trong bảng. Bảng đóng lại và thông báo **Đa
 
 Video lưu vào thư mục `Video\Camera` (Videos\Camera) của tài khoản Windows, ghi ở cuối bảng. Đổi thư mục trong [Các mục trong Cài đặt](../tham-khao/cac-muc-cai-dat.md).
 
-Không muốn lưu nữa thì bấm dấu **X** ở góc trên bảng hoặc nhấn phím `Esc`. Mỗi lần lưu được tối đa 24 giờ video; đoạn dài hơn thì chia làm nhiều lần.
+Không muốn trích xuất nữa thì bấm dấu **X** ở góc trên bảng hoặc nhấn phím `Esc`. Mỗi lần trích xuất được tối đa 24 giờ video; đoạn dài hơn thì chia làm nhiều lần.
 
-Video lưu ra thường dài hơn đoạn đã chọn vài giây: bắt đầu sớm hơn một chút và kết thúc muộn hơn khoảng 5 giây. Phần mềm cố ý lấy dư như vậy để video không bao giờ thiếu cảnh ở đầu hay cuối đoạn.
+Video trích xuất thường dài hơn đoạn đã chọn vài giây: bắt đầu sớm hơn một chút và kết thúc muộn hơn khoảng 5 giây. Phần mềm cố ý lấy dư như vậy để video không bao giờ thiếu cảnh ở đầu hay cuối đoạn.
 
 ## Lỗi thường gặp
 
@@ -77,8 +77,8 @@ Một ô giờ đang trống hoặc có chữ không phải giờ. Gõ lại the
 
 <details>
 
-<summary>Muốn đóng phần mềm khi video đang lưu</summary>
+<summary>Muốn đóng phần mềm khi đang trích xuất</summary>
 
-Phần mềm hỏi lại **Phần mềm đang lưu video. Nếu đóng bây giờ, video đang lưu sẽ bị hủy.** Chọn không đóng và chờ lưu xong; video dài có thể mất vài phút.
+Phần mềm hỏi lại **Phần mềm đang trích xuất video. Nếu đóng bây giờ, video đang trích xuất sẽ bị hủy.** Chọn không đóng và chờ xong; video dài có thể mất vài phút.
 
 </details>

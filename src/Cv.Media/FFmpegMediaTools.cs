@@ -14,6 +14,12 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
     private static readonly TimeSpan FileOpenTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StreamOpenTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan StreamStall = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// How short of the asked end a stream may go quiet and still count as complete: 5 s (the export asks 5 s past the
+    /// marked end, ExportService.RecordEndPad; DS-7732NI-M4 V5.04.081 stopped 2–3 s short), or 10 % of a long recording.
+    /// </summary>
+    private static long QuietEndSlackUs(long askedUs) => Math.Max(5_000_000, askedUs / 10);
     private const string LostDuringDownload = "Mất kết nối đầu ghi khi đang tải";
 
     public Task RemuxAsync(IReadOnlyList<RemuxPart> parts, string outputPath, IProgress<double>? progress, CancellationToken ct)
@@ -111,6 +117,7 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
         long gopStartUs = 0;
         long originUs = long.MinValue, fromUs = long.MinValue, toUs = long.MaxValue, startUs = 0;
         long lastVideoTs = ffmpeg.AV_NOPTS_VALUE;
+        long lastEmittedUs = long.MinValue;
         bool started = false;
         int count = 0;
         AVPacket* pkt = ffmpeg.av_packet_alloc();
@@ -161,7 +168,18 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
                 if (r < 0)
                 {
                     if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
-                    if (isLive) throw new IOException(LostDuringDownload, new IOException(irq.TimedOut ? "stall" : FFmpegError.Describe(r)));
+                    if (isLive)
+                    {
+                        // On the file it is still writing, the recorder sends up to the asked end and then goes quiet
+                        // without closing the stream (DS-7732NI-M4 V5.04.081, 2026-11-08): nearly all of it arrived,
+                        // so this is the end, not a lost link.
+                        if ((irq.TimedOut || FFmpegError.IsTimeout(r)) && started && toUs != long.MaxValue && lastEmittedUs >= toUs - QuietEndSlackUs(toUs - startUs))
+                        {
+                            Log.Info($"Stream went quiet {(toUs - lastEmittedUs) / 1000} ms before the asked end: treated as its end");
+                            break;
+                        }
+                        throw new IOException(LostDuringDownload, new IOException(irq.TimedOut ? "stall" : FFmpegError.Describe(r)));
+                    }
                     // A damaged tail is common in downloaded parts: keep what was read.
                     if (started) { Log.Warn("Input ended with an error, keeping what was read: " + FFmpegError.Describe(r)); break; }
                     throw FFmpegError.ToException(r, "read");
@@ -236,7 +254,11 @@ public sealed unsafe class FFmpegMediaTools : IMediaTools
 
                 if (track == 1 && (tsUs < startUs || tsUs >= toUs)) { ffmpeg.av_packet_unref(pkt); continue; }
                 Emit(pkt, track, st);
-                if (track == 0) onMediaUs?.Invoke(tsUs - startUs);
+                if (track == 0)
+                {
+                    lastEmittedUs = tsUs;
+                    onMediaUs?.Invoke(tsUs - startUs);
+                }
             }
             // From fell inside the last GOP of the file.
             if (!started && gop.Count > 0) { started = true; startUs = gopStartUs; FlushGop(); }

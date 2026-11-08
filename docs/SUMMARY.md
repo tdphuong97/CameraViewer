@@ -14,11 +14,11 @@
 * [Xem lớn một camera](xem-camera/xem-lon-mot-camera.md)
 * [Chụp ảnh](xem-camera/chup-anh.md)
 
-## Xem lại và lưu video
+## Xem lại và trích xuất video
 
 * [Xem lại một camera](xem-lai/xem-lai-camera.md)
 * [Tìm lúc có người](xem-lai/tim-nguoi.md)
-* [Lưu một đoạn video](xem-lai/luu-doan-video.md)
+* [Trích xuất video](xem-lai/luu-doan-video.md)
 * [Mở video đã lưu](xem-lai/video-da-luu.md)
 
 ## Tham khảo

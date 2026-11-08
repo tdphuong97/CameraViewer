@@ -34,8 +34,8 @@
             <StackPanel DockPanel.Dock="Top">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Icon}" Text="&#xE74E;" FontSize="18" Foreground="{StaticResource AccentHoverBrush}" />
-                        <TextBlock Text="Lưu video" FontSize="19" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" FontSize="18" Foreground="{StaticResource AccentHoverBrush}" />
+                        <TextBlock Text="Trích xuất video" FontSize="19" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                             app:Ui.Glyph="&#xE711;" app:Ui.GlyphSize="12" Padding="10,0" MinHeight="32" ToolTip="Đóng (Esc)"
@@ -66,8 +66,8 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border Style="{StaticResource StepBadge}"><TextBlock Style="{StaticResource StepNumber}" Text="3" /></Border>
-                    <Button x:Name="SaveButton" Grid.Column="1" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE74E;"
-                            Content="Lưu video" MinHeight="46" FontSize="15" Click="OnSave" />
+                    <Button x:Name="SaveButton" Grid.Column="1" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE896;"
+                            Content="Trích xuất" MinHeight="46" FontSize="15" Click="OnSave" />
                 </Grid>
                 <TextBlock x:Name="FolderText" Margin="34,8,0,0" FontSize="12" Foreground="{StaticResource MutedBrush}"
                            TextTrimming="CharacterEllipsis" />

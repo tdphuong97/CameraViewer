@@ -269,7 +269,7 @@ internal static class DemoSelfTest
         check(t == "Các mục trong Cài đặt", $"guide on Cài đặt: \"{t}\"");
 
         // The pages only reached from the export dialog and the first start.
-        foreach (var (page, title) in new[] { ("xem-lai/luu-doan-video", "Lưu một đoạn video"), ("bat-dau/ket-noi-dau-ghi", "Kết nối đầu ghi lần đầu") })
+        foreach (var (page, title) in new[] { ("xem-lai/luu-doan-video", "Trích xuất video"), ("bat-dau/ket-noi-dau-ghi", "Kết nối đầu ghi lần đầu") })
         {
             HelpWindow.Open(w, page, () => { });
             t = await Title();

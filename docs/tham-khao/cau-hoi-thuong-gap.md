@@ -8,7 +8,7 @@ description: Câu trả lời ngắn cho những câu hỏi hay gặp khi dùng 
 
 <summary>Video và ảnh lưu ở đâu?</summary>
 
-Video ở thư mục `Video\Camera` (Videos\Camera), ảnh ở `Ảnh\Camera` (Pictures\Camera) của tài khoản Windows, trừ khi bộ phận IT đã đổi trong **Cài đặt**. Đường dẫn thư mục video hiện ở cuối bảng **Lưu video**. Cách nhanh nhất để mở: tab **Video đã lưu** > **Mở thư mục video**.
+Video ở thư mục `Video\Camera` (Videos\Camera), ảnh ở `Ảnh\Camera` (Pictures\Camera) của tài khoản Windows, trừ khi bộ phận IT đã đổi trong **Cài đặt**. Đường dẫn thư mục video hiện ở cuối bảng **Trích xuất video**. Cách nhanh nhất để mở: tab **Video đã lưu** > **Mở thư mục video**.
 
 </details>
 

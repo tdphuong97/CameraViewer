@@ -48,7 +48,7 @@
             </WrapPanel>
         </Border>
 
-        <!-- Video, and the Lưu video panel beside it when open -->
+        <!-- Video, and the Trích xuất video / Có người panel beside it when open -->
         <Grid Grid.Row="1" Margin="18,14,18,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -96,8 +96,8 @@
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="SnapshotButton" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh" Click="OnSnapshot" MinHeight="44" />
-                <Button x:Name="SaveVideoButton" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE74E;" Content="Lưu video"
-                        MinHeight="44" Padding="20,0" Margin="10,0,0,0" ToolTip="Lưu một đoạn ghi hình ra file video MP4"
+                <Button x:Name="SaveVideoButton" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE896;" Content="Trích xuất video"
+                        MinHeight="44" Padding="20,0" Margin="10,0,0,0" ToolTip="Trích xuất một đoạn ghi hình ra file video MP4"
                         Click="OnSaveClip" />
             </StackPanel>
         </Grid>

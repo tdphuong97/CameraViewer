@@ -24,7 +24,7 @@ Cách điền và kiểm tra: xem [Kết nối đầu ghi lần đầu](../bat-d
 
 | Mục | Ý nghĩa | Mặc định |
 | --- | --- | --- |
-| **Lưu video vào** | Thư mục nhận file MP4 khi bấm **Lưu video**; đường dẫn cũng hiện ở cuối bảng **Lưu video**. Bấm **Đổi…** để chọn thư mục khác | `Video\Camera` của tài khoản Windows |
+| **Lưu video vào** | Thư mục nhận file MP4 khi trích xuất video; đường dẫn cũng hiện ở cuối bảng **Trích xuất video**. Bấm **Đổi…** để chọn thư mục khác | `Video\Camera` của tài khoản Windows |
 | **Lưu ảnh vào** | Thư mục nhận ảnh chụp | `Ảnh\Camera` của tài khoản Windows |
 | **Giải mã bằng card đồ họa** | **Tự động**: dùng card đồ họa cho hình lớn để máy chạy nhẹ hơn. **Tắt**: chỉ dùng bộ xử lý, tốn ít bộ nhớ hơn một chút nhưng nặng bộ xử lý hơn khi xem lớn | **Tự động** |
 | **Dừng xem khi thu nhỏ cửa sổ** | Bật: thu nhỏ cửa sổ thì ngắt mọi camera để giải phóng bộ nhớ và mạng; mở lại cửa sổ thì camera tự chạy tiếp | Bật |

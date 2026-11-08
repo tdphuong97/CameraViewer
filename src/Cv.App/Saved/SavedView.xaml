@@ -77,7 +77,7 @@
                            HorizontalAlignment="Center" />
             </Border>
             <TextBlock Text="Chưa có video nào được lưu" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,16,0,6" />
-            <TextBlock Text="Vào Xem lại, đánh dấu đoạn cần lưu rồi bấm Lưu đoạn video." Style="{StaticResource Muted}" FontSize="14"
+            <TextBlock Text="Vào Xem lại, tìm tới đoạn cần lấy rồi bấm Trích xuất video." Style="{StaticResource Muted}" FontSize="14"
                        HorizontalAlignment="Center" />
         </StackPanel>
     </Grid>

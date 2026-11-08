@@ -16,7 +16,7 @@ Tên mục trong menu đầu ghi có thể khác đôi chút tuỳ firmware.
 | Bật giao thức tích hợp (ISAPI) | Mạng > Cài đặt nâng cao > Giao thức tích hợp (Integration Protocol) | Để đọc danh sách camera, tìm ghi hình và tải video |
 | Tạo tài khoản riêng cho phần mềm | Quản lý người dùng > Thêm | Chỉ cần quyền xem trực tiếp từ xa (Remote Live View) và xem lại từ xa (Remote Playback), kèm quyền tải video nếu có. Không dùng tài khoản `admin` |
 | Bật luồng phụ cho mọi camera | Ghi hình/Mã hoá > Luồng phụ | Lưới camera dùng luồng phụ để máy chạy nhẹ |
-| Đồng bộ giờ (NTP), đúng múi giờ | Hệ thống > Thời gian | Giờ lệch thì xem lại và lưu video bị lệch giờ |
+| Đồng bộ giờ (NTP), đúng múi giờ | Hệ thống > Thời gian | Giờ lệch thì xem lại và trích xuất video bị lệch giờ |
 | Mở cổng HTTP 80 và RTSP 554 từ máy tính tới đầu ghi | Tường lửa, VLAN | Đã đổi cổng trên đầu ghi thì nhập đúng cổng đó |
 
 {% hint style="warning" %}

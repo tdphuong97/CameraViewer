@@ -81,7 +81,7 @@ public partial class PeoplePanel : UserControl
     public void ShowUnsupported(string camera, DateTime day)
     {
         Reset(camera, day, null);
-        ShowState(Glyphs.Info, "Đầu ghi này không cho tìm những lúc có người.", "Vẫn xem lại và lưu video bình thường.", retry: false);
+        ShowState(Glyphs.Info, "Đầu ghi này không cho tìm những lúc có người.", "Vẫn xem lại và trích xuất video bình thường.", retry: false);
     }
 
     public void ShowError(string camera, DateTime day, string message)

@@ -134,8 +134,9 @@ public class ExportServiceTests : IDisposable
         Assert.Equal(ExportStatus.Done, job.Status);
         Assert.Equal("RtspRecord", job.Method);
         var rec = Assert.Single(_media.Records);
-        Assert.Equal("rtsp://admin:pw@10.0.0.1:554/Streaming/tracks/101?starttime=20261107T100000Z&endtime=20261107T101000Z", rec.Url);
-        Assert.Equal(TimeSpan.FromMinutes(10), rec.Duration);
+        // 5 s past the end (ExportService.RecordEndPad): the recorder may stop short on the file it is writing.
+        Assert.Equal("rtsp://admin:pw@10.0.0.1:554/Streaming/tracks/101?starttime=20261107T100000Z&endtime=20261107T101005Z", rec.Url);
+        Assert.Equal(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(5), rec.Duration);
         Assert.StartsWith(Temp, rec.Output);
         Assert.Equal(Path.Combine(Out, "Cổng chính_2026-11-07_10h00-10h10.mp4"), job.OutputPath);
         Assert.True(File.Exists(job.OutputPath));

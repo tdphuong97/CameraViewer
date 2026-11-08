@@ -41,7 +41,7 @@ Thanh thời gian (6) hiện cả ngày từ 00:00 đến 24:00. **Vạch xanh l
 {% endstepper %}
 
 {% hint style="info" %}
-Nút xanh **Lưu video** (8) lưu một đoạn đang xem ra file MP4: xem [Lưu một đoạn video](luu-doan-video.md). Nút **Có người** (9) liệt kê những lúc camera thấy có người, kèm ảnh: xem [Tìm lúc có người](tim-nguoi.md).
+Nút xanh **Trích xuất video** (8) lấy một đoạn đang xem ra file MP4: xem [Trích xuất video](luu-doan-video.md). Nút **Có người** (9) liệt kê những lúc camera thấy có người, kèm ảnh: xem [Tìm lúc có người](tim-nguoi.md).
 {% endhint %}
 
 ## Phần mềm báo gì khi xem lại

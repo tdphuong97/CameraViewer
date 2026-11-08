@@ -19,6 +19,7 @@ public sealed class PlaybackController
     readonly VideoView _view;
     readonly Dispatcher _ui;
     readonly DispatcherTimer _jumpTimer;
+    readonly DispatcherTimer _endTimer;
     IVideoSource? _source;
     DateTime _openAt;
     TimeRange? _span;
@@ -37,8 +38,22 @@ public sealed class PlaybackController
             _jumpTimer.Stop();
             Open(_pendingSpan.Start, _pendingSpan);
         };
+        // The end of a span is reached by the clock, not by the stream: on a file the recorder is still writing it sends
+        // up to the asked end and then goes quiet without closing (DS-7732NI-M4 V5.04.081, 2026-11-08), which would
+        // freeze the picture for 10 s and then read as a lost link.
+        _endTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _endTimer.Tick += (_, _) =>
+        {
+            if (Status != PlaybackStatus.Playing || _source is not { State: VideoState.Playing } src || _span is not { } sp || !_view.HasFrame) return;
+            if (_openAt + src.Position < sp.End - EndSlack) return;
+            _endTimer.Stop();
+            OnEnded();
+        };
         _view.FirstFrame += _ => Raise();
     }
+
+    /// <summary>How close to the span end counts as the end (a frame or two short of it).</summary>
+    static readonly TimeSpan EndSlack = TimeSpan.FromMilliseconds(300);
 
     public ChannelInfo? Camera { get; private set; }
     public DateTime Day { get; private set; } = DateTime.Today;
@@ -141,6 +156,7 @@ public sealed class PlaybackController
             _source = src;
             _view.Source = src;
             src.Start();
+            _endTimer.Start();
             Set(PlaybackStatus.Loading, "Đang tải…");
         }
         catch (Exception ex)
@@ -163,6 +179,11 @@ public sealed class PlaybackController
                 Set(PlaybackStatus.Paused, null);
                 break;
             case VideoState.Ended:
+                OnEnded();
+                break;
+            case VideoState.Failed when _span is { } sp && _view.HasFrame && _openAt + src.Position >= sp.End - TimeSpan.FromSeconds(3):
+                // Went quiet right at the end of the span (the recorder does that on the file it is writing): the end.
+                Log.Info($"Playback ch{Camera?.No}: stream went quiet at the span end ({sp.End:HH:mm:ss}); treated as its end");
                 OnEnded();
                 break;
             case VideoState.Failed:
@@ -277,6 +298,7 @@ public sealed class PlaybackController
 
     void CloseSource(bool keepPicture = false)
     {
+        _endTimer.Stop();
         var s = _source;
         if (s is null) return;
         s.StateChanged -= OnSourceState;

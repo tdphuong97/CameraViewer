@@ -30,9 +30,9 @@ Cuộn danh sách để xem ảnh. Bấm vào ảnh của lượt cần xem: vid
 {% endstep %}
 
 {% step %}
-### Lưu lại nếu cần
+### Trích xuất nếu cần
 
-Thấy đúng việc cần lưu thì bấm **Lưu video** cạnh nút **Chụp ảnh**. Xem [Lưu một đoạn video](luu-doan-video.md).
+Thấy đúng việc cần lấy thì bấm **Trích xuất video** cạnh nút **Chụp ảnh**. Xem [Trích xuất video](luu-doan-video.md).
 {% endstep %}
 {% endstepper %}
 
@@ -50,7 +50,7 @@ Camera nhận người tự động nên có lúc sót (người ở xa, khuất
 
 <summary>Không thấy nút Có người</summary>
 
-Đầu ghi không cho tìm những lúc có người (đời cũ hoặc hãng khác). Vẫn xem lại và lưu video bình thường.
+Đầu ghi không cho tìm những lúc có người (đời cũ hoặc hãng khác). Vẫn xem lại và trích xuất video bình thường.
 
 </details>
 
