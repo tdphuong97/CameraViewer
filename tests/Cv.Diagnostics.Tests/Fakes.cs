@@ -1,11 +1,12 @@
 using Cv.Core.Export;
+using Cv.Core.Hik;
 using Cv.Core.Nvr;
 using Cv.Core.Video;
 
 namespace Cv.Diagnostics.Tests;
 
 /// <summary>A recorder in memory: every call can be replaced; calls are recorded.</summary>
-internal sealed class FakeNvr : INvrClient, INvrDiagnostics
+internal sealed class FakeNvr : INvrClient, INvrDiagnostics, INvrDetections, INvrPeopleOverview
 {
     public const string Host = "192.168.1.64";
     public readonly List<string> Calls = [];
@@ -35,6 +36,14 @@ internal sealed class FakeNvr : INvrClient, INvrDiagnostics
             return [new DownloadedPart(path, from, from, to, method ?? DownloadMethod.ByTime)];
         };
     public DownloadMethod? WorkingMethod { get; set; }
+    /// <summary>People detections per channel; default: 40 on D14 and 20 on D8, two hours ago.</summary>
+    public Func<int, IReadOnlyList<DetectionEvent>> People = ch => ch is 8 or 14
+        ? Enumerable.Range(0, ch == 14 ? 40 : 20)
+            .Select(i => new DetectionEvent(ch, Now.AddHours(-2).AddSeconds(i), $"/picture/Streaming/tracks/{ch}03/?name=p{i}&size=250000")).ToList()
+        : [];
+    /// <summary>One search over several channels; default: the first 100 of People.</summary>
+    public Func<IReadOnlyCollection<int>, PeopleOverview>? Overview;
+    public Func<string, byte[]> Picture = _ => [0xFF, 0xD8, 0xFF, 0xE0, .. new byte[250_000], 0xFF, 0xD9];
 
     public Task<NvrDeviceInfo> GetDeviceInfoAsync(CancellationToken ct) => Call("deviceInfo", DeviceInfo);
     public Task<DeviceClock> GetClockAsync(CancellationToken ct) => Call("time", Clock);
@@ -51,6 +60,16 @@ internal sealed class FakeNvr : INvrClient, INvrDiagnostics
     public Task<IReadOnlyList<DownloadedPart>> DownloadWithAsync(DownloadMethod method, int channel, DateTime from, DateTime to, string folder, IProgress<long>? bytes, CancellationToken ct) =>
         Call($"downloadWith {method}", () => Download(method, from, to, folder, bytes, ct));
     public Task<TimeMode> ResolveTimeModeAsync(CancellationToken ct) => Call("timeMode", Mode);
+    public Task<IReadOnlyList<DetectionEvent>> SearchPeopleAsync(int channel, DateTime from, DateTime to, CancellationToken ct) =>
+        Call($"people {channel}", () => People(channel));
+    public Task<PeopleOverview> PeopleOverviewAsync(IReadOnlyCollection<int> channels, DateTime from, DateTime to, CancellationToken ct) =>
+        Call("peopleOverview", () =>
+        {
+            if (Overview is not null) return Overview(channels);
+            var all = channels.SelectMany(People).OrderBy(e => e.Time).ToList();
+            return new PeopleOverview(all.Take(100).ToList(), all.Count, all.Count > 100);
+        });
+    public Task<byte[]> GetPictureAsync(string pictureUri, CancellationToken ct) => Call("picture", () => Picture(pictureUri));
 
     public string LiveUrl(int channel, StreamKind kind) =>
         $"rtsp://admin:{Uri.EscapeDataString(Password)}@{Host}:554/Streaming/Channels/{channel}0{(int)kind}";

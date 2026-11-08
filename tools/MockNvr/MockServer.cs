@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -19,6 +20,8 @@ public static class MockServer
         var clock = new MockClock(o, time);
         var hikTime = new HikTime(clock, o.TimeMode);
         var store = new RecordingStore(clock);
+        var people = new PeopleStore(store);
+        var cursors = new ConcurrentDictionary<string, int>(); // eventRecordSearch: searchID -> next result
         var auth = new DigestAuth(o, time);
         var clips = new ClipCache(o.ResolveDataDir());
 
@@ -32,7 +35,7 @@ public static class MockServer
         });
         var app = builder.Build();
 
-        // Request log + digest auth for everything under /ISAPI.
+        // Request log + digest auth for everything under /ISAPI and /picture.
         app.Use(async (ctx, next) =>
         {
             var sw = Stopwatch.StartNew();
@@ -44,7 +47,7 @@ public static class MockServer
             var note = "";
             try
             {
-                if (ctx.Request.Path.StartsWithSegments("/ISAPI"))
+                if (ctx.Request.Path.StartsWithSegments("/ISAPI") || ctx.Request.Path.StartsWithSegments("/picture"))
                 {
                     var r = auth.Check(ctx.Request.Method, target, ctx.Request.Headers.Authorization, ip);
                     note = r.Outcome switch
@@ -80,6 +83,9 @@ public static class MockServer
         app.MapGet("/ISAPI/Security/userCheck", () => Xml(IsapiXml.UserCheckOk()));
         app.MapPost("/ISAPI/ContentMgmt/search", (Func<HttpContext, Task<IResult>>)(ctx => SearchAsync(ctx, store, hikTime, o)));
         app.MapMethods("/ISAPI/ContentMgmt/download", ["GET", "POST"], (HttpContext ctx) => DownloadAsync(ctx, store, hikTime, clips, o));
+        app.MapPost("/ISAPI/ContentMgmt/eventRecordSearch", (Func<HttpContext, Task<IResult>>)(ctx => PeopleApi.SearchAsync(ctx, people, clock, o, cursors)));
+        app.MapGet("/ISAPI/ContentMgmt/eventRecordSearch/capabilities", () => PeopleApi.Capabilities(o));
+        app.MapGet("/picture/{**rest}", (HttpContext ctx) => PeopleApi.Picture(ctx, people));
         app.MapFallback((HttpContext ctx) => ctx.Request.Path.StartsWithSegments("/ISAPI")
             ? Xml(IsapiXml.ResponseStatus(ctx.Request.Path, 4, "Invalid Operation", "notSupport"), 403)
             : Results.NotFound());

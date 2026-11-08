@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using Cv.Core;
 using Cv.Core.Export;
+using Cv.Core.Hik;
 using Cv.Core.Nvr;
 using Cv.Core.Video;
 
@@ -37,8 +38,9 @@ internal sealed record ProbeTimeouts
 }
 
 /// <summary>
-/// On-site check of a real recorder (Track D implements): device info, clock and time mode, channels, search,
-/// live and playback RTSP (a few frames each), a 10-second ISAPI download by each method, remux to MP4.
+/// On-site check of a real recorder (Track D implements): device info, clock and time mode, channels, search, people
+/// detections (information only), live and playback RTSP (a few frames each), a 10-second ISAPI download by each
+/// method, remux to MP4.
 /// Read-only on the recorder. Saves "probe-report-yyyyMMdd-HHmmss.txt" (password never written) into reportFolder.
 /// Stops at the first login error so the recorder does not lock the account. Cancelling saves the partial report and
 /// then throws OperationCanceledException.
@@ -111,6 +113,7 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
         private readonly Dictionary<DownloadMethod, string> _methods = [];
         private bool _isapiOk;
         private TimeSpan? _isapiMp4, _rtspMp4;
+        private string? _people;
 
         private ProbeTimeouts T => owner.Timeouts;
 
@@ -144,6 +147,7 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
                 l => l.Count == 0 ? (false, "đầu ghi không trả về camera nào") : (true, ChannelsText(l)))).Value;
 
             await SearchStep(nvr);
+            await PeopleStep(nvr);
             var window = PickWindow();
 
             var liveCh = _channels?.FirstOrDefault(c => c.No == _recChannel && c.Online)?.No ?? _channels?.FirstOrDefault(c => c.Online)?.No;
@@ -223,6 +227,90 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
                     text += "; CẢNH BÁO: lệch đúng bằng múi giờ, có thể sai chế độ thời gian";
                 return (true, text);
             });
+        }
+
+        /// <summary>
+        /// People detections of the last 24 hours, an information line (a recorder without them still plays and exports):
+        /// one request over every channel (first page: how many, where), the busiest channel searched the way the app
+        /// does (every page), one picture. Few requests: the recorder logs about one detection a second per person.
+        /// </summary>
+        private async Task PeopleStep(INvrClient nvr)
+        {
+            const string name = "  Tìm lúc có người (phát hiện người của camera)";
+            if (nvr is not INvrDetections people) { Skip(name, "kết nối này không có chức năng tìm lúc có người"); return; }
+            if (_channels is not { Count: > 0 } channels) { Skip(name, "chưa có danh sách camera"); return; }
+            await Run(name, T.Isapi * 3, async c =>
+            {
+                try { return await PeopleCheckAsync(nvr, people, channels, c); }
+                catch (NvrDetectionUnsupportedException ex)
+                {
+                    _people = "đầu ghi không hỗ trợ (xem và lưu video không bị ảnh hưởng)";
+                    return (false, $"{ex.Message} Xem và lưu video không bị ảnh hưởng.");
+                }
+            }, r => r);
+        }
+
+        private async Task<(bool, string)> PeopleCheckAsync(INvrClient nvr, INvrDetections people, IReadOnlyList<ChannelInfo> channels, CancellationToken c)
+        {
+            var now = _clock?.LocalNow ?? owner.Time.GetLocalNow().DateTime;
+            var (from, to) = (now.AddHours(-24), now.AddMinutes(5));
+            const string quiet = "có thể camera chưa bật phát hiện người (Motion Detection 2.0, mục tiêu người)";
+            var parts = new List<string>();
+
+            int? busiest = null;
+            if (nvr is INvrPeopleOverview overview)
+            {
+                try
+                {
+                    var o = await overview.PeopleOverviewAsync(channels.Select(x => x.No).ToList(), from, to, c);
+                    if (o.Events.Count == 0)
+                    {
+                        _people = "không thấy lần nào trong 24 giờ qua";
+                        return (true, $"không thấy lần nào trong 24 giờ qua trên {channels.Count} camera: {quiet}");
+                    }
+                    var byChannel = o.Events.GroupBy(e => e.Channel).ToList();
+                    busiest = byChannel.OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
+                    var total = o.More && o.Total <= o.Events.Count ? $"{o.Total}+" : o.Total.ToString(CultureInfo.InvariantCulture);
+                    var where = string.Join(" ", byChannel.Select(g => g.Key).Order().Select(k => $"D{k}"));
+                    _people = $"{total} lần trong 24 giờ qua, kênh {where}{(o.More ? "…" : "")}";
+                    parts.Add($"có: {total} lần trong 24 giờ qua, kênh {where}" + (o.More ? $" (theo {o.Events.Count} lần đầu)" : ""));
+                }
+                catch (NvrException ex) when (ex is not (NvrAuthException or NvrUnreachableException or NvrDetectionUnsupportedException))
+                {
+                    // The app searches one channel at a time: that is still worth checking.
+                    parts.Add($"tìm mọi kênh một lần không được ({Describe(ex)})");
+                }
+            }
+
+            var ch = busiest ?? _recChannel ?? channels.FirstOrDefault(x => x.Online)?.No ?? channels[0].No;
+            var list = await people.SearchPeopleAsync(ch, from, to, c);
+            if (list.Count == 0)
+            {
+                _people ??= $"kênh D{ch}: không thấy lần nào trong 24 giờ qua";
+                parts.Add($"kênh D{ch}: không thấy lần nào trong 24 giờ qua, {quiet}");
+                return (true, string.Join("; ", parts));
+            }
+            _people ??= $"kênh D{ch}: {list.Count} lần trong 24 giờ qua";
+            parts.Add($"kênh D{ch}: {list.Count} lần, gần nhất {list[^1].Time:yyyy-MM-dd HH:mm:ss}");
+
+            if (list.LastOrDefault(e => e.PictureUri is not null) is not { } shot)
+            {
+                parts.Add("đầu ghi không lưu ảnh kèm theo");
+                return (true, string.Join("; ", parts));
+            }
+            try
+            {
+                var bytes = await people.GetPictureAsync(shot.PictureUri!, c);
+                _people += $"; ảnh được ({Bytes(bytes.Length)})";
+                parts.Add($"ảnh lúc {shot.Time:HH:mm:ss}: {Bytes(bytes.Length)}{(bytes is [0xFF, 0xD8, 0xFF, ..] ? " JPEG" : "")}");
+                return (true, string.Join("; ", parts));
+            }
+            catch (NvrException ex) when (ex is not (NvrAuthException or NvrUnreachableException))
+            {
+                _people += "; ảnh KHÔNG tải được";
+                parts.Add($"ảnh lúc {shot.Time:HH:mm:ss}: {Describe(ex)}");
+                return (false, string.Join("; ", parts));
+            }
         }
 
         private (DateTime From, DateTime To)? PickWindow()
@@ -481,7 +569,9 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Add(name, ProbeOutcome.Fail, sw.Elapsed, Describe(ex));
+                // A lost or locked recorder stops the probe, so it is never just an information line: the report must
+                // not say ĐẠT with the rest skipped.
+                Add(ex is NvrAuthException or NvrUnreachableException ? name.TrimStart() : name, ProbeOutcome.Fail, sw.Elapsed, Describe(ex));
                 StopIfFatal(ex);
             }
             return (false, default);
@@ -546,6 +636,7 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
             if (_mode is not null || _skew is not null)
                 Field(sb, "Thời gian", $"{(_mode is { } m ? ModeText(m) : "chưa xác định")}{(_skew is { } k ? $"; đồng hồ lệch máy tính {Signed(k)}" : "")}");
             if (_recChannel is not null) Field(sb, "Ghi hình", $"kênh D{_recChannel}, {_segments.Count} đoạn trong 24 giờ qua");
+            if (_people is not null) Field(sb, "Lúc có người", _people);
             Field(sb, "Xem trực tiếp", _liveSub is null && _liveMain is null ? "KHÔNG được" :
                 $"{(_liveSub is null ? "luồng phụ KHÔNG được" : "luồng phụ " + _liveSub)}; {(_liveMain is null ? "luồng chính KHÔNG được" : "luồng chính " + _liveMain)}");
             Field(sb, "Xem lại", _playback switch { true => "được", false => "KHÔNG được", null => "chưa thử" });
