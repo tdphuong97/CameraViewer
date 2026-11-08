@@ -1,3 +1,9 @@
+## 0.9.4
+
+- Lưu video dễ hơn: ở màn Xem lại chỉ còn một nút xanh Lưu video (cạnh Chụp ảnh). Bấm vào là có bảng ba bước đánh số bên cạnh video: 1 Từ lúc, 2 Đến lúc, 3 Lưu video. Bảng điền sẵn 5 phút quanh lúc đang xem (2 phút trước, 3 phút sau), nên phần lớn chỉ cần bấm Lưu video.
+- Nút Giờ đang xem lấy đúng giây của video; gõ giờ kiểu 14:30, 14h30 hay 14:30:15 đều được; kéo hai đầu đoạn màu cam trên thanh thời gian cũng đổi giờ trong bảng. Thanh thời gian tự phóng to còn 1 giờ để thấy rõ đoạn chọn.
+- Bỏ hai nút Đánh dấu bắt đầu, Đánh dấu kết thúc và hộp Lưu đoạn video cũ; thư mục lưu đổi trong Cài đặt. Video xem lại to hơn vì bớt một hàng nút.
+
 ## 0.9.3
 
 - Lưu video nhanh hơn hẳn với đầu ghi DS-7732NI-M4 firmware V5.04: tải đúng đoạn theo giờ (10 giây chưa tới 1 giây) thay vì cả đoạn ghi 5 tiếng (khoảng 700 MB, nửa phút). Đã thử trên đầu ghi thật.

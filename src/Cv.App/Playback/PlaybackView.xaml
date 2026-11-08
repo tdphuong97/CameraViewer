@@ -3,17 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:Cv.App"
              xmlns:video="clr-namespace:Cv.App.Video"
-             xmlns:controls="clr-namespace:Cv.App.Controls">
-    <UserControl.Resources>
-        <!-- Orange bracket icons matching the range handles on the timeline -->
-        <Geometry x:Key="MarkStartIcon">M 6,1 L 2,1 L 2,15 L 6,15 M 9,8 L 14,8</Geometry>
-        <Geometry x:Key="MarkEndIcon">M 10,1 L 14,1 L 14,15 L 10,15 M 2,8 L 7,8</Geometry>
-    </UserControl.Resources>
+             xmlns:controls="clr-namespace:Cv.App.Controls"
+             xmlns:playback="clr-namespace:Cv.App.Playback">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -53,23 +48,30 @@
             </WrapPanel>
         </Border>
 
-        <!-- Video -->
-        <Grid Grid.Row="1" Margin="18,14,18,0" Background="Black">
-            <video:VideoView x:Name="Video" />
-            <Border x:Name="NameChip" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="10,5"
-                    Background="{StaticResource OverlayBrush}" CornerRadius="6">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" FontSize="13" Foreground="{StaticResource SubtleBrush}" />
-                    <TextBlock x:Name="NameChipText" FontSize="13" Margin="8,0,0,0" />
-                </StackPanel>
-            </Border>
-            <Border x:Name="Overlay" Background="{StaticResource OverlayBrush}" CornerRadius="8" Padding="20,13"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="OverlayIcon" Style="{StaticResource Icon}" FontSize="18" />
-                    <TextBlock x:Name="OverlayText" FontSize="15" Margin="12,0,0,0" VerticalAlignment="Center" />
-                </StackPanel>
-            </Border>
+        <!-- Video, and the Lưu video panel beside it when open -->
+        <Grid Grid.Row="1" Margin="18,14,18,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <playback:SavePanel x:Name="SavePanel" Grid.Column="1" Margin="14,0,0,0" />
+            <Grid Background="Black">
+                <video:VideoView x:Name="Video" />
+                <Border x:Name="NameChip" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="10,5"
+                        Background="{StaticResource OverlayBrush}" CornerRadius="6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" FontSize="13" Foreground="{StaticResource SubtleBrush}" />
+                        <TextBlock x:Name="NameChipText" FontSize="13" Margin="8,0,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Overlay" Background="{StaticResource OverlayBrush}" CornerRadius="8" Padding="20,13"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="OverlayIcon" Style="{StaticResource Icon}" FontSize="18" />
+                        <TextBlock x:Name="OverlayText" FontSize="15" Margin="12,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- Clock and transport -->
@@ -91,12 +93,16 @@
                         Width="64" Height="44" Padding="0" Margin="10,0" ToolTip="Tạm dừng" Click="OnPlayPause" />
                 <Button app:Ui.Glyph="&#xE7A6;" Content="30 giây" ToolTip="Tới 30 giây" Click="OnForward30" MinHeight="44" />
             </StackPanel>
-            <Button x:Name="SnapshotButton" Grid.Column="2" HorizontalAlignment="Right" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh"
-                    Click="OnSnapshot" MinHeight="44" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SnapshotButton" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh" Click="OnSnapshot" MinHeight="44" />
+                <Button x:Name="SaveVideoButton" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE74E;" Content="Lưu video"
+                        MinHeight="44" Padding="20,0" Margin="10,0,0,0" ToolTip="Lưu một đoạn ghi hình ra file video MP4"
+                        Click="OnSaveClip" />
+            </StackPanel>
         </Grid>
 
         <!-- Timeline + zoom -->
-        <Border Grid.Row="3" Margin="18,0,18,0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="3" Margin="18,0,18,16" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,8,12,6">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -113,37 +119,5 @@
                 </Border>
             </Grid>
         </Border>
-
-        <!-- Marks and export -->
-        <Grid Grid.Row="4" Margin="18,12,18,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal">
-                <Button Click="OnMarkStart" ToolTip="Đặt điểm bắt đầu tại thời điểm đang xem" MinHeight="40">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="{StaticResource MarkStartIcon}" Stroke="{StaticResource RangeBrush}" StrokeThickness="2" Width="16"
-                              Height="16" VerticalAlignment="Center" Margin="0,0,9,0" />
-                        <TextBlock Text="Đánh dấu bắt đầu" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <Button Click="OnMarkEnd" ToolTip="Đặt điểm kết thúc tại thời điểm đang xem" MinHeight="40" Margin="8,0,0,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="{StaticResource MarkEndIcon}" Stroke="{StaticResource RangeBrush}" StrokeThickness="2" Width="16"
-                              Height="16" VerticalAlignment="Center" Margin="0,0,9,0" />
-                        <TextBlock Text="Đánh dấu kết thúc" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0">
-                <TextBlock x:Name="RangeText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <Button x:Name="ClearRangeButton" Style="{StaticResource GhostButton}" app:Ui.Glyph="&#xE711;" app:Ui.GlyphSize="11"
-                        Content="Bỏ chọn" MinHeight="32" Margin="10,0,0,0" Click="OnClearRange" Visibility="Collapsed" />
-            </StackPanel>
-            <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE74E;" Content="Lưu đoạn video"
-                    MinHeight="40" Padding="20,0" Click="OnSaveClip" />
-        </Grid>
     </Grid>
 </UserControl>

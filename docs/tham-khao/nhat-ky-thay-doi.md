@@ -6,6 +6,12 @@ description: Những gì thay đổi ở từng phiên bản Camera Viewer.
 
 {% updates format="full" %}
 {% update date="2026-11-08" %}
+## Phiên bản 0.9.4
+
+* Lưu video dễ hơn: ở màn Xem lại chỉ còn một nút **Lưu video**. Bấm vào là có bảng ba bước đánh số bên cạnh video (Từ lúc, Đến lúc, Lưu video), đã điền sẵn 5 phút quanh lúc đang xem. Nút **Giờ đang xem** lấy đúng giây của video.
+* Bỏ hai nút Đánh dấu bắt đầu, Đánh dấu kết thúc và hộp lưu cũ.
+{% endupdate %}
+{% update date="2026-11-08" %}
 ## Phiên bản 0.9.3
 
 * Lưu video nhanh hơn hẳn với đầu ghi DS-7732NI-M4 đời mới: đoạn 10 giây lưu xong chưa tới 1 giây (trước đây phải tải cả đoạn ghi 5 tiếng, khoảng 700 MB).

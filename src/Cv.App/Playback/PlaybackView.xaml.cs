@@ -10,8 +10,8 @@ using Cv.Core.Nvr;
 namespace Cv.App.Playback;
 
 /// <summary>
-/// Xem lại: one camera, one day. Pickers on top, the video, a big clock and transport, the 24 h timeline, and the
-/// simple export (mark start, mark end, Lưu đoạn video).
+/// Xem lại: one camera, one day. Pickers on top, the video, a big clock and transport, the 24 h timeline, and
+/// Lưu video: a panel beside the video with three numbered steps, prefilled around the moment on screen.
 /// </summary>
 public partial class PlaybackView : UserControl, IPage
 {
@@ -21,11 +21,9 @@ public partial class PlaybackView : UserControl, IPage
     readonly DispatcherTimer _tick;
     (ChannelInfo Camera, DateTime At)? _request;
     DateTime? _resumeAt;
-    DateTime? _rangeStart, _rangeEnd;
     bool _active;
     bool _settingCamera;
     long _shownSecond = -1;
-    bool _capturePreset;
 
     public PlaybackView()
     {
@@ -33,7 +31,13 @@ public partial class PlaybackView : UserControl, IPage
         _tick = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(250) };
         _tick.Tick += (_, _) => UpdatePosition();
         Timeline.SeekRequested += t => _ctrl.Jump(t);
-        Timeline.RangeChanged += (a, b) => { _rangeStart = a; _rangeEnd = b; UpdateRange(); };
+        // Dragging the orange handles on the timeline changes the times in the panel.
+        Timeline.RangeChanged += (a, b) =>
+        {
+            if (!SavePanel.IsOpen || a is not { } from || b is not { } to) return;
+            Timeline.SetRange(from, to);
+            SavePanel.SetRange(from, to);
+        };
         Timeline.ViewChanged += UpdateZoomButtons;
         DayPicker.Picked += d => { DayPopup.IsOpen = false; ChangeDay(d); };
         DayPopup.Closed += (_, _) => UpdateDayButtons();
@@ -46,14 +50,21 @@ public partial class PlaybackView : UserControl, IPage
         _s = shell.Services;
         _ctrl = new PlaybackController(_s, Video);
         _ctrl.Changed += OnChanged;
+        SavePanel.Init(shell, () => _ctrl.Camera is null ? null : _ctrl.Position);
+        SavePanel.RangeEdited += (a, b) => Timeline.SetRange(a, b);
+        SavePanel.Closed += () =>
+        {
+            Timeline.SetRange(null, null);
+            NameChip.Visibility = Visibility.Visible;
+        };
         _s.NvrChanged += () =>
         {
+            SavePanel.Close();
             _ctrl.Reset();
             _resumeAt = null;
             CameraBox.ItemsSource = null;
             if (_active) _ = ActivateAsync();
         };
-        UpdateRange();
         UpdateZoomButtons();
     }
 
@@ -104,7 +115,6 @@ public partial class PlaybackView : UserControl, IPage
             var at = _s.DeviceNow.AddMinutes(-5);
             await Load(first, at.Date, at);
         }
-        if (_capturePreset) ApplyCapturePreset();
     }
 
     public void Deactivate()
@@ -194,6 +204,7 @@ public partial class PlaybackView : UserControl, IPage
         if (_settingCamera || CameraBox.SelectedItem is not ChannelInfo cam || _ctrl.Camera?.No == cam.No) return;
         // Same moment, other camera: what did that one see?
         var at = _ctrl.Camera is null ? _s.DeviceNow.AddMinutes(-5) : _ctrl.Position;
+        if (SavePanel.IsOpen) SavePanel.SetCamera(cam); // same times, this camera
         _ = Load(cam, _ctrl.Day, at);
     }
 
@@ -213,8 +224,7 @@ public partial class PlaybackView : UserControl, IPage
         var at = day + _ctrl.Position.TimeOfDay;
         var now = _s.DeviceNow;
         if (at > now) at = now.AddMinutes(-5);
-        _rangeStart = _rangeEnd = null;
-        UpdateRange();
+        SavePanel.Close();
         _ = Load(cam, day, at);
     }
 
@@ -289,82 +299,64 @@ public partial class PlaybackView : UserControl, IPage
             b.IsChecked = Math.Abs(len.TotalHours - int.Parse((string)b.Tag, System.Globalization.CultureInfo.InvariantCulture)) < 0.01;
     }
 
-    // ---- Range and export ----
+    // ---- Lưu video ----
 
     static DateTime Whole(DateTime t) => new(t.Ticks - t.Ticks % TimeSpan.TicksPerSecond);
 
-    void OnMarkStart(object sender, RoutedEventArgs e)
+    void OnSaveClip(object sender, RoutedEventArgs e) => OpenSavePanel();
+
+    /// <summary>Esc closes the panel.</summary>
+    public bool HandleEscape()
     {
-        if (_ctrl.Camera is null) return;
-        _rangeStart = Whole(_ctrl.Position);
-        if (_rangeEnd is { } end && end <= _rangeStart) _rangeEnd = null;
-        UpdateRange();
+        if (!SavePanel.IsOpen) return false;
+        SavePanel.Close();
+        return true;
     }
 
-    void OnMarkEnd(object sender, RoutedEventArgs e)
-    {
-        if (_ctrl.Camera is null) return;
-        _rangeEnd = Whole(_ctrl.Position);
-        if (_rangeStart is { } start && start >= _rangeEnd) _rangeStart = null;
-        UpdateRange();
-    }
+    internal bool SavePanelOpen => SavePanel.IsOpen;
 
-    void OnClearRange(object sender, RoutedEventArgs e)
-    {
-        _rangeStart = _rangeEnd = null;
-        UpdateRange();
-    }
-
-    void UpdateRange()
-    {
-        Timeline.SetRange(_rangeStart, _rangeEnd);
-        ClearRangeButton.Visibility = _rangeStart is null && _rangeEnd is null ? Visibility.Collapsed : Visibility.Visible;
-        RangeText.Foreground = (Brush)FindResource("TextBrush");
-        if (_rangeStart is { } a && _rangeEnd is { } b)
-            RangeText.Text = $"Đoạn đã chọn: {TimeFormat.Clock(a)} → {TimeFormat.Clock(b)}  ·  {TimeFormat.Duration(b - a)}";
-        else if (_rangeStart is { } s)
-            RangeText.Text = $"Bắt đầu {TimeFormat.Clock(s)} · hãy đánh dấu kết thúc";
-        else if (_rangeEnd is { } en)
-            RangeText.Text = $"Kết thúc {TimeFormat.Clock(en)} · hãy đánh dấu bắt đầu";
-        else
-        {
-            RangeText.Text = "Đánh dấu đoạn cần lưu trong lúc xem";
-            RangeText.Foreground = (Brush)FindResource("MutedBrush");
-        }
-    }
-
-    void OnSaveClip(object sender, RoutedEventArgs e) => OpenExportDialog();
-
-    internal void OpenExportDialog()
+    internal void OpenSavePanel()
     {
         if (_ctrl.Camera is not { } cam || _s.NvrConfig is not { } nvr)
         {
             _shell.Toast("Hãy chọn camera trước.", ToastKind.Warn);
             return;
         }
-        var from = _rangeStart ?? (_rangeEnd is { } end ? end.AddMinutes(-5) : Whole(_ctrl.Position));
-        var to = _rangeEnd ?? from.AddMinutes(5);
-        var dialog = new ExportDialog(_shell, nvr.Id, cam, from, to);
-        _shell.ShowModal(dialog);
+        if (SavePanel.IsOpen)
+        {
+            SavePanel.FocusSave(); // keep what was set
+            return;
+        }
+        var (from, to) = DefaultRange(Whole(_ctrl.Position), _ctrl.Day, _s.DeviceNow);
+        SavePanel.Open(nvr.Id, cam, _ctrl.Day, from, to);
+        // The narrower video fills its width: the name chip would cover the camera's own date and time (the panel names
+        // the camera anyway).
+        NameChip.Visibility = Visibility.Collapsed;
+        Timeline.SetRange(from, to);
+        // A 5-minute range is a sliver on 24 hours: show one hour around it.
+        if (Timeline.View.Length > TimeSpan.FromHours(1)) Timeline.Zoom(TimeSpan.FromHours(1));
+    }
+
+    /// <summary>
+    /// 2 minutes before to 3 minutes after the moment on screen, kept inside the day and before the recorder's now.
+    /// </summary>
+    internal static (DateTime From, DateTime To) DefaultRange(DateTime at, DateTime day, DateTime now)
+    {
+        day = day.Date;
+        var last = day.AddDays(1).AddSeconds(-1);
+        if (now < last) last = Whole(now);
+        var from = at.AddMinutes(-2);
+        var to = at.AddMinutes(3);
+        if (to > last) to = last;
+        if (from < day) from = day;
+        if (to - from < TimeSpan.FromMinutes(1)) from = to.AddMinutes(-5) < day ? day : to.AddMinutes(-5);
+        return (from, to);
     }
 
     // ---- Self-test and capture hooks ----
 
     internal PlaybackController TestController => _ctrl;
-    internal (DateTime? Start, DateTime? End) TestRange => (_rangeStart, _rangeEnd);
-    internal void TestMarkStart() => OnMarkStart(this, new RoutedEventArgs());
-    internal void TestMarkEnd() => OnMarkEnd(this, new RoutedEventArgs());
+    internal SavePanel TestPanel => SavePanel;
+    internal (DateTime? Start, DateTime? End) TestTimelineRange => Timeline.Range;
     internal void TestTogglePause() => OnPlayPause(this, new RoutedEventArgs());
-
-    /// <summary>Screenshots: shows a marked range around the playhead once playback runs.</summary>
-    internal void PresetForCapture() => _capturePreset = true;
-
-    void ApplyCapturePreset()
-    {
-        _capturePreset = false;
-        var p = Whole(_ctrl.Position);
-        _rangeStart = p.AddMinutes(-2);
-        _rangeEnd = p.AddMinutes(3);
-        UpdateRange();
-    }
 }

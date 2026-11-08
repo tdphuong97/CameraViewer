@@ -155,11 +155,10 @@ public partial class MainWindow : Window, IShell
     /// <summary>The guide page about what is on screen (paths in docs\, without .md).</summary>
     internal string HelpPage()
     {
-        if (ModalHost.Visibility == Visibility.Visible && ModalContent.Content is ExportDialog) return "xem-lai/luu-doan-video";
         return _current switch
         {
             LiveView l => l.InSingle ? "xem-camera/xem-lon-mot-camera" : "xem-camera/xem-tat-ca-camera",
-            PlaybackView => "xem-lai/xem-lai-camera",
+            PlaybackView p => p.SavePanelOpen ? "xem-lai/luu-doan-video" : "xem-lai/xem-lai-camera",
             SavedView => "xem-lai/video-da-luu",
             SettingsView => _s.IsConfigured ? "tham-khao/cac-muc-cai-dat" : "bat-dau/ket-noi-dau-ghi",
             _ => "",

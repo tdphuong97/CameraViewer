@@ -111,20 +111,32 @@ internal static class DemoSelfTest
             Check(ctrl.Position >= day.AddHours(2.5) && ctrl.Status == PlaybackStatus.Playing,
                 $"end of span continues with the next one ({ctrl.Position:HH:mm:ss})");
 
-            pb.TestMarkStart();
+            // Lưu video: the panel opens prefilled 2 min before to 3 min after the moment on screen.
+            var at = ctrl.Position;
+            pb.OpenSavePanel();
+            var panel = pb.TestPanel;
+            var pre = panel.TestRange;
+            Check(pb.SavePanelOpen && pre is { } p0 && p0.From <= at && p0.To > at && p0.To - p0.From <= TimeSpan.FromMinutes(5),
+                $"Lưu video: panel open, prefilled {pre?.From:HH:mm:ss} → {pre?.To:HH:mm:ss} around {at:HH:mm:ss}");
+            Check(pb.TestTimelineRange == (pre?.From, pre?.To), "range drawn on the timeline");
+            Check(w.HelpPage() == "xem-lai/luu-doan-video", "F1 with the panel open: page about saving");
+
+            panel.TestFromHere();
             await Wait(2.2);
-            pb.TestMarkEnd();
-            var (rs, re) = pb.TestRange;
-            Check(rs is not null && re is not null && re > rs, $"marks: {rs:HH:mm:ss} → {re:HH:mm:ss}");
+            panel.TestToHere();
+            var (rs, re) = panel.TestRange ?? default;
+            Check(re > rs && (re - rs).TotalSeconds is >= 1 and <= 4, $"Giờ đang xem twice: {rs:HH:mm:ss} → {re:HH:mm:ss}");
+            Check(pb.TestTimelineRange == (rs, re), "timeline follows the panel");
 
             var jobsBefore = s.Export.Jobs.Count;
-            pb.OpenExportDialog();
-            var dialog = w.ModalContent.Content as ExportDialog;
-            Check(dialog is not null, "export dialog opens");
-            dialog?.TestSave();
-            Check(s.Export.Jobs.Count == jobsBefore + 1 && w.ModalHost.Visibility != Visibility.Visible, "Lưu: job queued, dialog closed");
+            panel.TestSave();
+            Check(s.Export.Jobs.Count == jobsBefore + 1 && !pb.SavePanelOpen && pb.TestTimelineRange == (null, null),
+                "Lưu video: job queued, panel closed, range cleared");
             var job = s.Export.Jobs.OrderBy(j => j.CreatedAt).Last();
-            Check(job.Request.Channel == 2 && job.Request.From == rs && job.Request.To == re, "job carries camera and marked range");
+            Check(job.Request.Channel == 2 && job.Request.From == rs && job.Request.To == re, "job carries camera and chosen range");
+
+            pb.OpenSavePanel();
+            Check(pb.HandleEscape() && !pb.SavePanelOpen, "Esc closes the panel");
 
             w.WindowState = WindowState.Minimized;
             await Wait(0.5);

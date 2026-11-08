@@ -101,6 +101,9 @@ public sealed class TimelineControl : FrameworkElement
         }
     }
 
+    /// <summary>The orange range as drawn.</summary>
+    public (DateTime? Start, DateTime? End) Range => (_rangeStart, _rangeEnd);
+
     public void SetRange(DateTime? start, DateTime? end)
     {
         _rangeStart = start;

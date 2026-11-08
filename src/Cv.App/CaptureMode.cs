@@ -42,14 +42,12 @@ internal static class CaptureMode
                     w.ShowLive();
                     break;
                 case "playback":
-                    w.PlaybackPage.PresetForCapture();
                     w.ShowPlaybackTab();
                     break;
                 case "export":
-                    w.PlaybackPage.PresetForCapture();
                     w.ShowPlaybackTab();
                     await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.5, o.DelaySeconds / 2)));
-                    w.PlaybackPage.OpenExportDialog();
+                    w.PlaybackPage.OpenSavePanel();
                     break;
                 case "update":
                     w.ShowLive();

@@ -6,7 +6,7 @@ description: Xem lại ghi hình của một camera theo ngày giờ, tua tới 
 
 **Ai làm:** Người xem camera · **Mất khoảng:** 1 phút
 
-<figure><img src="../.gitbook/assets/xem-lai-so.svg" alt="Màn hình Xem lại, đánh số các vùng từ 1 đến 9"><figcaption><p>Màn hình Xem lại</p></figcaption></figure>
+<figure><img src="../.gitbook/assets/xem-lai-so.svg" alt="Màn hình Xem lại, đánh số các vùng từ 1 đến 8"><figcaption><p>Màn hình Xem lại</p></figcaption></figure>
 
 {% stepper %}
 {% step %}
@@ -41,7 +41,7 @@ Thanh thời gian (6) hiện cả ngày từ 00:00 đến 24:00. **Vạch xanh l
 {% endstepper %}
 
 {% hint style="info" %}
-Hai nút ở hàng cuối, **Đánh dấu bắt đầu**, **Đánh dấu kết thúc** (8) và **Lưu đoạn video** (9), dùng để lưu một đoạn ra file. Xem [Lưu một đoạn video](luu-doan-video.md).
+Nút xanh **Lưu video** (8) lưu một đoạn đang xem ra file MP4. Xem [Lưu một đoạn video](luu-doan-video.md).
 {% endhint %}
 
 ## Phần mềm báo gì khi xem lại

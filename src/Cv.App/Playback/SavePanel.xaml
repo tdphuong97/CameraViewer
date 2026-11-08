@@ -1,0 +1,114 @@
+<UserControl x:Class="Cv.App.Playback.SavePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Cv.App"
+             Focusable="True" Width="340">
+    <UserControl.Resources>
+        <!-- The numbered step badges: the order to follow, at a glance. -->
+        <Style x:Key="StepBadge" TargetType="Border">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="StepNumber" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="StepTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <!-- Step 3 is pinned to the bottom: always on screen, even on a small window (the steps above scroll). -->
+    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+            CornerRadius="10">
+        <DockPanel Margin="18,12,18,14">
+            <StackPanel DockPanel.Dock="Top">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE74E;" FontSize="18" Foreground="{StaticResource AccentHoverBrush}" />
+                        <TextBlock Text="Lưu video" FontSize="19" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                            app:Ui.Glyph="&#xE711;" app:Ui.GlyphSize="12" Padding="10,0" MinHeight="32" ToolTip="Đóng (Esc)"
+                            Click="OnClose" />
+                </Grid>
+                <TextBlock x:Name="CameraText" Margin="0,8,0,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Margin="0,2,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+                           Text="Đã điền sẵn 5 phút quanh lúc đang xem." />
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                <Border x:Name="ErrorBox" Background="#2A1517" BorderBrush="#5A2328" BorderThickness="1" CornerRadius="6"
+                        Padding="12,9" Margin="0,0,0,10" Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" FontSize="14" Foreground="{StaticResource DangerBrush}"
+                                   VerticalAlignment="Top" Margin="0,2,10,0" />
+                        <TextBlock x:Name="ErrorText" Grid.Column="1" TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
+                <!-- 3. Save -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource StepBadge}"><TextBlock Style="{StaticResource StepNumber}" Text="3" /></Border>
+                    <Button x:Name="SaveButton" Grid.Column="1" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE74E;"
+                            Content="Lưu video" MinHeight="46" FontSize="15" Click="OnSave" />
+                </Grid>
+                <TextBlock x:Name="FolderText" Margin="34,8,0,0" FontSize="12" Foreground="{StaticResource MutedBrush}"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
+                <StackPanel>
+                    <!-- 1. From -->
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,6">
+                        <Border Style="{StaticResource StepBadge}"><TextBlock Style="{StaticResource StepNumber}" Text="1" /></Border>
+                        <TextBlock Style="{StaticResource StepTitle}" Text="Từ lúc" />
+                    </StackPanel>
+                    <Grid Margin="34,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="FromBox" FontSize="17" app:Ui.Placeholder="14:30" TextChanged="OnTimesChanged"
+                                 ToolTip="Gõ giờ, ví dụ 14:30 hoặc 14:30:15" />
+                        <Button x:Name="FromHereButton" Grid.Column="1" Margin="8,0,0,0" app:Ui.Glyph="&#xE121;" Content="Giờ đang xem"
+                                ToolTip="Lấy đúng giây của video đang xem" Click="OnFromHere" />
+                    </Grid>
+
+                    <!-- 2. To -->
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,6">
+                        <Border Style="{StaticResource StepBadge}"><TextBlock Style="{StaticResource StepNumber}" Text="2" /></Border>
+                        <TextBlock Style="{StaticResource StepTitle}" Text="Đến lúc" />
+                    </StackPanel>
+                    <Grid Margin="34,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ToBox" FontSize="17" app:Ui.Placeholder="14:35" TextChanged="OnTimesChanged"
+                                 ToolTip="Gõ giờ, ví dụ 14:35 hoặc 14:35:15" />
+                        <Button x:Name="ToHereButton" Grid.Column="1" Margin="8,0,0,0" app:Ui.Glyph="&#xE121;" Content="Giờ đang xem"
+                                ToolTip="Lấy đúng giây của video đang xem" Click="OnToHere" />
+                    </Grid>
+                    <TextBlock x:Name="LengthText" Margin="34,8,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>
