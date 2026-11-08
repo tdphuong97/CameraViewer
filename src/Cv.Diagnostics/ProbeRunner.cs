@@ -364,7 +364,8 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
                         return (true, $"đầu ghi gửi cả đoạn ghi ({rate}); dừng sớm cho đỡ tốn thời gian");
                     }
                     _methods[m] = "trả cả đoạn";
-                    return (false, $"đầu ghi gửi nhiều hơn {Seconds(len)} rất nhiều ({rate}): có vẻ trả cả đoạn ghi, cắt theo khoảng yêu cầu sẽ sai chỗ");
+                    // ExportPlanner recognises such a file by its length and cuts it like a whole segment.
+                    return (true, $"đầu ghi gửi cả đoạn ghi thay vì {Seconds(len)} ({rate}): phần mềm nhận ra và cắt lại như cách BySegmentWhole; dừng sớm cho đỡ tốn thời gian");
                 }
                 var took = sw.Elapsed;
                 var conv = await ConvertAsync(got, len, Path.Combine(_temp, $"probe-{m}.mp4"), c);
@@ -375,9 +376,8 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
         }
 
         /// <summary>
-        /// Same rule as the export: a part whose real length matches what it should cover is copied whole; a whole
-        /// segment (BySegmentWhole) is trimmed from its start; anything else that does not match is a problem.
-        /// Then remux to MP4 and check its length.
+        /// The export's own rule (<see cref="ExportPlanner"/>): a part as long as its range is copied whole, a whole
+        /// recorder file is cut to the range, anything else is a problem. Then remux to MP4 and check its length.
         /// </summary>
         private async Task<(bool Ok, string Detail, TimeSpan? Mp4)> ConvertAsync(IReadOnlyList<DownloadedPart> parts, TimeSpan expected, string mp4, CancellationToken c)
         {
@@ -390,27 +390,28 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
                 var covered = p.CoveredTo - p.CoveredFrom;
                 var d = await owner._media.GetDurationAsync(p.FilePath, c);
                 if (d is null) return (false, $"{PartsText(parts)}; phần {i + 1}: không đọc được video trong file", null);
-                var trimmed = new RemuxPart(p.FilePath, p.CoveredFrom - p.NominalStart, p.CoveredTo - p.NominalStart);
-                if ((d.Value - covered).Duration() <= Max(TimeSpan.FromSeconds(10), covered / 10))
+                var (part, fit) = ExportPlanner.Plan(p, d);
+                remux.Add(part);
+                switch (fit)
                 {
-                    remux.Add(new RemuxPart(p.FilePath));
-                    notes.Add($"phần {i + 1} dài {Seconds(d.Value)}, đúng khoảng yêu cầu");
-                }
-                else if (p.Method == DownloadMethod.BySegmentWhole)
-                {
-                    remux.Add(trimmed);
-                    notes.Add($"phần {i + 1} là cả đoạn {Seconds(d.Value)}, cắt lấy {Seconds(trimmed.From!.Value)}–{Seconds(trimmed.To!.Value)}");
-                }
-                else
-                {
-                    ok = false;
-                    remux.Add(p.Method == DownloadMethod.ByTime ? new RemuxPart(p.FilePath) : trimmed);
-                    notes.Add($"phần {i + 1} dài {Seconds(d.Value)} thay vì {Seconds(covered)}: đầu ghi không cắt đúng khoảng yêu cầu");
+                    case PartFit.Exact:
+                        notes.Add($"phần {i + 1} dài {Seconds(d.Value)}, đúng khoảng yêu cầu");
+                        break;
+                    case PartFit.WholeFileCut:
+                        var whole = p.Method == DownloadMethod.BySegmentRange ? "đầu ghi gửi cả đoạn ghi " : "cả đoạn ghi ";
+                        notes.Add($"phần {i + 1}: {whole}{Seconds(d.Value)}, cắt lấy {Seconds(part.From ?? TimeSpan.Zero)}–{(part.To is { } t ? Seconds(t) : "hết")}");
+                        break;
+                    default:
+                        ok = false;
+                        notes.Add($"phần {i + 1} dài {Seconds(d.Value)} thay vì {Seconds(covered)}: đầu ghi không cắt đúng khoảng yêu cầu");
+                        break;
                 }
             }
             await owner._media.RemuxAsync(remux, mp4, null, c);
             var md = await owner._media.GetDurationAsync(mp4, c);
-            var (lok, ltext) = LengthVerdict(md, expected, mp4);
+            // A download by time asks a few seconds past the end (HikNvrClient.TimeEndPad): what was asked is the yardstick.
+            var asked = parts.Aggregate(TimeSpan.Zero, (sum, p) => sum + (p.CoveredTo - p.CoveredFrom));
+            var (lok, ltext) = LengthVerdict(md, expected, mp4, asked);
             return (ok && lok, $"{PartsText(parts)}; {string.Join("; ", notes)}; {ltext}", md);
         }
 
@@ -446,13 +447,15 @@ public sealed class ProbeRunner(INvrClientFactory nvrs, IVideoSourceFactory vide
             });
         }
 
-        private static (bool, string) LengthVerdict(TimeSpan? d, TimeSpan expected, string file)
+        private static (bool, string) LengthVerdict(TimeSpan? d, TimeSpan expected, string file, TimeSpan? asked = null)
         {
             if (d is null) return (false, "không đọc được file MP4");
             var size = File.Exists(file) ? Bytes(new FileInfo(file).Length) : "?";
+            var longest = asked is { } a && a > expected ? a : expected;
             // Cutting at the key frame before the start may add up to one GOP.
-            var ok = d.Value >= expected * 0.8 && d.Value <= expected + TimeSpan.FromSeconds(5);
-            return (ok, $"MP4 dài {Seconds(d.Value)} (cần {Seconds(expected)}), {size}" + (ok ? "" : " — SAI ĐỘ DÀI"));
+            var ok = d.Value >= expected * 0.8 && d.Value <= longest + TimeSpan.FromSeconds(5);
+            var extra = longest - expected >= TimeSpan.FromSeconds(1) ? $", tải thêm {Seconds(longest - expected)} ở cuối cho chắc đủ" : "";
+            return (ok, $"MP4 dài {Seconds(d.Value)} (cần {Seconds(expected)}{extra}), {size}" + (ok ? "" : " — SAI ĐỘ DÀI"));
         }
 
         // ---------- plumbing ----------

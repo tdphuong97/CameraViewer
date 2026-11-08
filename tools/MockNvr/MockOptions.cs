@@ -22,6 +22,11 @@ public enum DownloadMode
     Whole,
     /// <summary>Answers every download with HTTP 200 and an XML error body (download not supported).</summary>
     XmlError,
+    /// <summary>
+    /// DS-7732NI-M4 firmware V5.04.081 (real recorder, 2026-11-08): time URIs get a 24-byte block before "IMKH" and
+    /// stop inside the last frame; segment URIs, narrowed or not, get the whole file.
+    /// </summary>
+    Framed,
 }
 
 public enum VideoCodec { H264, H265 }
@@ -65,7 +70,7 @@ public sealed class MockOptions
           --user <name>            login (default admin)
           --password <text>        password (default: MOCKNVR_PASSWORD environment variable, else Mock@1234)
           --time-mode <m>          localz | utc | offset (default localz)
-          --download <m>           honor | whole | xml-error (default honor)
+          --download <m>           honor | whole | xml-error | framed (default honor)
           --download-codec <c>     h265 | h264 (default h265)
           --download-mbps <n>      throttle downloads (default 0 = no limit)
           --no-audio               downloads without the G.711 track
@@ -121,6 +126,7 @@ public sealed class MockOptions
                             "honor" => DownloadMode.Honor,
                             "whole" => DownloadMode.Whole,
                             "xml-error" or "xmlerror" => DownloadMode.XmlError,
+                            "framed" => DownloadMode.Framed,
                             var v => throw new FormatException($"unknown download mode '{v}'"),
                         };
                         break;

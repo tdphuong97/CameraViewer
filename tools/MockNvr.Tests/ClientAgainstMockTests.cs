@@ -94,7 +94,8 @@ public sealed class ClientAgainstMockTests(ITestOutputHelper output) : IDisposab
         var ps = PsInfo.Read(File.ReadAllBytes(part.FilePath));
         Assert.True(ps.Imkh);
         Assert.Equal(streamType, ps.VideoStreamType);
-        Assert.Equal(150, ps.VideoFrames);
+        Assert.Equal(to.AddSeconds(5), part.CoveredTo); // the end is asked 5 s later (HikNvrClient.TimeEndPad)
+        Assert.Equal(225, ps.VideoFrames);
         Assert.True(ps.AudioPes > 0);
         Assert.Equal(DownloadMethod.ByTime, ((INvrDiagnostics)c).WorkingMethod);
     }
@@ -118,6 +119,28 @@ public sealed class ClientAgainstMockTests(ITestOutputHelper output) : IDisposab
         var range = Assert.Single(await d.DownloadWithAsync(DownloadMethod.BySegmentRange, 1, from, to, _temp, null, default));
         Assert.InRange(PsInfo.Read(File.ReadAllBytes(range.FilePath)).Duration, seg.Duration - TimeSpan.FromSeconds(1), seg.Duration);
         Assert.Contains(m.LogLines, l => l.Contains("refused (whole mode"));
+    }
+
+    [Fact]
+    public async Task Framed_mode_by_time_keeps_the_stream_and_drops_the_cut_frame()
+    {
+        // DS-7732NI-M4 V5.04.081: a 24-byte block before IMKH, the body stops inside the last frame.
+        await using var m = await RunningMock.StartAsync(o => { o.Download = DownloadMode.Framed; o.Audio = false; });
+        using var c = Client(m);
+        var (seg, from, to) = Window(m);
+
+        var part = Assert.Single(await c.DownloadAsync(1, from, to, _temp, null, default));
+
+        Assert.Equal(DownloadMethod.ByTime, part.Method);
+        var ps = PsInfo.Read(File.ReadAllBytes(part.FilePath));
+        Assert.True(ps.Imkh); // the block before IMKH is gone
+        var asked = (int)Math.Round((part.CoveredTo - part.CoveredFrom).TotalSeconds * MockDevice.Fps);
+        Assert.Equal(asked - 1, ps.VideoFrames); // the unfinished last frame is gone
+        Assert.Contains(m.LogLines, l => l.Contains("[framed"));
+
+        // Segment URIs get the whole file, like Whole mode.
+        var range = Assert.Single(await ((INvrDiagnostics)c).DownloadWithAsync(DownloadMethod.BySegmentRange, 1, from, to, _temp, null, default));
+        Assert.InRange(PsInfo.Read(File.ReadAllBytes(range.FilePath)).Duration, seg.Duration - TimeSpan.FromSeconds(1), seg.Duration);
     }
 
     [Fact]
@@ -168,6 +191,7 @@ public sealed class ClientAgainstMockTests(ITestOutputHelper output) : IDisposab
     [InlineData(DownloadMode.Honor)]
     [InlineData(DownloadMode.Whole)]
     [InlineData(DownloadMode.XmlError)]
+    [InlineData(DownloadMode.Framed)]
     public async Task Probe_runs_end_to_end_against_the_mock(DownloadMode mode)
     {
         await using var m = await RunningMock.StartAsync(o => { o.Download = mode; o.Audio = false; });
@@ -198,6 +222,11 @@ public sealed class ClientAgainstMockTests(ITestOutputHelper output) : IDisposab
             case DownloadMode.XmlError:
                 Assert.False(report.Passed);
                 Assert.Contains("chỉ bằng cách ghi lại qua RTSP", report.Text);
+                break;
+            case DownloadMode.Framed:
+                // The real site recorder of 2026-11-08: by time works once the block before IMKH is skipped.
+                Assert.True(report.Passed, report.Text);
+                Assert.Contains("[ByTime: được, BySegmentRange: trả cả đoạn, BySegmentWhole: được (cả đoạn)]", report.Text);
                 break;
         }
     }

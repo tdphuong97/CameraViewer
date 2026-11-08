@@ -36,4 +36,4 @@ Mỗi bước ghi **PASS** (đạt), **FAIL** (lỗi) hoặc **SKIP** (bỏ qua)
 | Xem trực tiếp, xem lại | Mở luồng phụ, luồng chính và xem lại; ghi định dạng, độ phân giải, số hình mỗi giây |
 | Lưu video | Lưu thử 10 giây như phần mềm vẫn làm, thử từng cách tải của đầu ghi, chuyển sang MP4 và kiểm tra độ dài |
 
-Nếu gặp lỗi đăng nhập, chẩn đoán dừng ngay để đầu ghi không khoá tài khoản. Chẩn đoán có thể lâu hơn 3 phút nếu đầu ghi chỉ cho tải cả đoạn ghi 1 giờ.
+Nếu gặp lỗi đăng nhập, chẩn đoán dừng ngay để đầu ghi không khoá tài khoản. Chẩn đoán thường xong trong khoảng 1 phút; có thể lâu hơn 3 phút nếu đầu ghi chỉ cho tải cả đoạn ghi.

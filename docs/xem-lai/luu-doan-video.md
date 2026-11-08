@@ -52,6 +52,8 @@ Bấm **Lưu** (4). Thông báo **Đang lưu video… Xem ở mục Video đã l
 
 Không đánh dấu gì mà bấm **Lưu đoạn video** ngay thì hộp lưu điền sẵn 5 phút tính từ thời điểm đang xem. Mỗi lần lưu được tối đa 24 giờ video; đoạn dài hơn thì chia làm nhiều lần.
 
+Video lưu ra thường dài hơn đoạn đã đánh dấu vài giây: bắt đầu sớm hơn một chút và kết thúc muộn hơn khoảng 5 giây. Phần mềm cố ý lấy dư như vậy để video không bao giờ thiếu cảnh ở đầu hay cuối đoạn.
+
 ## Lỗi thường gặp
 
 <details>

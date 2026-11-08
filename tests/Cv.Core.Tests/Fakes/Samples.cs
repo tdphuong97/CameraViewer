@@ -110,4 +110,38 @@ public static class Samples
         for (var i = 44; i < b.Length; i++) b[i] = (byte)(i * 7);
         return b;
     }
+
+    /// <summary>
+    /// A well-formed Hikvision PS: IMKH header, then per frame a pack header + video PES with a PTS (1000 bytes) and a
+    /// pack header + continuation PES without PTS (1000 bytes): 2051 bytes a frame. FrameStarts: offset of each frame's
+    /// first pack header.
+    /// </summary>
+    public static (byte[] Data, List<int> FrameStarts) FramedPs(int frames)
+    {
+        var s = new MemoryStream();
+        var header = new byte[40];
+        "IMKH"u8.CopyTo(header);
+        s.Write(header);
+        byte[] pack = [0, 0, 1, 0xBA, 0x44, 0, 4, 0, 4, 1, 0x01, 0x89, 0xC3, 0xF8];
+        var payload = Enumerable.Repeat((byte)0x55, 1000).ToArray();
+        var starts = new List<int>();
+        for (var f = 0; f < frames; f++)
+        {
+            starts.Add((int)s.Length);
+            s.Write(pack);
+            s.Write([0, 0, 1, 0xE0, 0x03, 0xF0, 0x80, 0x80, 0x05, 0x21, 0x00, 0x01, 0x00, 0x01]); // PES length 1008, PTS
+            s.Write(payload);
+            s.Write(pack);
+            s.Write([0, 0, 1, 0xE0, 0x03, 0xEB, 0x80, 0x00, 0x00]); // PES length 1003, no PTS
+            s.Write(payload);
+        }
+        return (s.ToArray(), starts);
+    }
+
+    /// <summary>
+    /// The 24 bytes DS-7732NI-M4 firmware V5.04.081 sends before "IMKH" when downloading by time (seen on a real
+    /// recorder, 2026-11-08).
+    /// </summary>
+    public static readonly byte[] TimeDownloadPrefix =
+        [0, 0, 0, 0x40, 0, 0, 0, 0x13, 0, 0x0A, 0x3B, 0xC0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x28];
 }

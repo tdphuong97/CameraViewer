@@ -6,6 +6,13 @@ description: Những gì thay đổi ở từng phiên bản Camera Viewer.
 
 {% updates format="full" %}
 {% update date="2026-11-08" %}
+## Phiên bản 0.9.3
+
+* Lưu video nhanh hơn hẳn với đầu ghi DS-7732NI-M4 đời mới: đoạn 10 giây lưu xong chưa tới 1 giây (trước đây phải tải cả đoạn ghi 5 tiếng, khoảng 700 MB).
+* Video lưu ra không còn khung hình vỡ ở cuối, và lấy dư vài giây ở cuối để không thiếu cảnh.
+{% endupdate %}
+
+{% update date="2026-11-08" %}
 ## Phiên bản 0.9.2
 
 * Hướng dẫn sử dụng mở trong một cửa sổ riêng của phần mềm thay vì trình duyệt, và mở đúng trang về màn hình đang xem.

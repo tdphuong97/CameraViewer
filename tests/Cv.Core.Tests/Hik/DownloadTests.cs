@@ -36,13 +36,13 @@ public class DownloadTests : IDisposable
         var p = Assert.Single(parts);
         Assert.Equal(DownloadMethod.ByTime, p.Method);
         Assert.Equal(Path.Combine(_dir.Path, "ch1_20261107100000_1.ps"), p.FilePath);
-        Assert.Equal((From, From, To), (p.NominalStart, p.CoveredFrom, p.CoveredTo));
+        Assert.Equal((From, From, To.AddSeconds(5)), (p.NominalStart, p.CoveredFrom, p.CoveredTo)); // end padded
         Assert.Equal(ps, File.ReadAllBytes(p.FilePath));
         Assert.Equal(ps.Length, progress[^1]);
 
         var (verb, uri) = Assert.Single(f.Downloads);
         Assert.Equal(HttpMethod.Get, verb);
-        Assert.Equal("rtsp://192.168.1.64/Streaming/tracks/101/?starttime=20261107T100000Z&endtime=20261107T101000Z", uri);
+        Assert.Equal("rtsp://192.168.1.64/Streaming/tracks/101/?starttime=20261107T100000Z&endtime=20261107T101005Z", uri);
         var req = f.Handler.Requests.Last(r => r.PathAndQuery == "/ISAPI/ContentMgmt/download");
         Assert.Contains("xmlns=\"http://www.isapi.org/ver20/XMLSchema\"", req.Body);
         Assert.Equal(DownloadMethod.ByTime, c.WorkingMethod);
@@ -176,8 +176,18 @@ public class DownloadTests : IDisposable
             .Add(101, "2026-11-07T10:05:00Z", "2026-11-07T11:00:00Z");
         using var c = f.Client();
         var parts = await c.DownloadAsync(1, From, To, _dir.Path, null, default);
-        Assert.Equal([(From, From.AddMinutes(2)), (From.AddMinutes(5), To)], parts.Select(p => (p.CoveredFrom, p.CoveredTo)));
-        Assert.Contains("starttime=20261107T100500Z&endtime=20261107T101000Z", f.Downloads[1].Uri);
+        Assert.Equal([(From, From.AddMinutes(2)), (From.AddMinutes(5), To.AddSeconds(5))], parts.Select(p => (p.CoveredFrom, p.CoveredTo)));
+        Assert.Contains("starttime=20261107T100500Z&endtime=20261107T101005Z", f.Downloads[1].Uri);
+    }
+
+    [Fact]
+    public async Task The_padded_end_stops_where_the_recording_stops()
+    {
+        var f = new FakeRecorder().Add(101, "2026-11-07T09:30:00Z", "2026-11-07T10:10:02Z");
+        using var c = f.Client();
+        var parts = await c.DownloadAsync(1, From, To, _dir.Path, null, default);
+        Assert.Equal(To.AddSeconds(2), Assert.Single(parts).CoveredTo);
+        Assert.Contains("endtime=20261107T101002Z", f.Downloads[0].Uri);
     }
 
     [Fact]
@@ -186,8 +196,8 @@ public class DownloadTests : IDisposable
         var f = new FakeRecorder().Add(101, "2026-11-07T02:30:00Z", "2026-11-07T04:00:00Z");
         using var c = f.Client(TimeMode.Utc);
         var parts = await c.DownloadAsync(1, From, To, _dir.Path, null, default);
-        Assert.Equal((From, To), (parts[0].CoveredFrom, parts[0].CoveredTo));
-        Assert.Contains("starttime=20261107T030000Z&endtime=20261107T031000Z", f.Downloads[0].Uri);
+        Assert.Equal((From, To.AddSeconds(5)), (parts[0].CoveredFrom, parts[0].CoveredTo));
+        Assert.Contains("starttime=20261107T030000Z&endtime=20261107T031005Z", f.Downloads[0].Uri);
     }
 
     [Fact]
@@ -256,9 +266,30 @@ public class DownloadTests : IDisposable
     [Fact]
     public void Program_stream_detection()
     {
-        Assert.True(HikNvrClient.IsProgramStream(Samples.Ps(), 44));
-        Assert.True(HikNvrClient.IsProgramStream([0, 0, 1, 0xBA], 4));
-        Assert.False(HikNvrClient.IsProgramStream("<?xml"u8.ToArray(), 5));
-        Assert.False(HikNvrClient.IsProgramStream([0, 0, 1, 0xBA], 3));
+        Assert.Equal(0, HikNvrClient.ProgramStreamStart(Samples.Ps(), 44));
+        Assert.Equal(0, HikNvrClient.ProgramStreamStart([0, 0, 1, 0xBA], 4));
+        Assert.Equal(-1, HikNvrClient.ProgramStreamStart("<?xml"u8.ToArray(), 5));
+        Assert.Equal(-1, HikNvrClient.ProgramStreamStart([0, 0, 1, 0xBA], 3));
+        Assert.Equal(24, HikNvrClient.ProgramStreamStart([.. Samples.TimeDownloadPrefix, .. Samples.Ps()], 200));
+        Assert.Equal(-1, HikNvrClient.ProgramStreamStart([.. new byte[300], .. Samples.Ps()], 344)); // too far in: not a header
+    }
+
+    [Fact]
+    public async Task By_time_with_a_firmware_block_before_the_stream_keeps_only_the_stream()
+    {
+        // DS-7732NI-M4 V5.04.081: 24 bytes, then IMKH; the body stops inside the last frame.
+        var f = Recorder();
+        var (ps, frameStarts) = Samples.FramedPs(10);
+        var body = Samples.TimeDownloadPrefix.Concat(ps[..^500]).ToArray();
+        f.Download = (_, _) => FakeIsapiHandler.Bytes(body);
+        using var c = f.Client();
+        var progress = new List<long>();
+        var parts = await c.DownloadAsync(1, From, To, _dir.Path, new SyncProgress<long>(progress.Add), default);
+
+        var p = Assert.Single(parts);
+        Assert.Equal(DownloadMethod.ByTime, p.Method);
+        Assert.Equal(ps[..frameStarts[^1]], File.ReadAllBytes(p.FilePath)); // prefix and unfinished frame gone
+        Assert.Equal(ps.Length - 500, progress[^1]);
+        Assert.Single(f.Downloads); // accepted at once, no other method tried
     }
 }

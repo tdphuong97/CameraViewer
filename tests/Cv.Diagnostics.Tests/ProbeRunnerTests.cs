@@ -168,7 +168,7 @@ public sealed class ProbeRunnerTests : IDisposable
     }
 
     [Fact]
-    public async Task Segment_range_answered_with_a_whole_file_is_stopped_early_and_flagged()
+    public async Task Segment_range_answered_with_a_whole_file_is_stopped_early_and_explained()
     {
         _nvr.Download = (method, from, to, folder, bytes, ct) =>
         {
@@ -186,7 +186,8 @@ public sealed class ProbeRunnerTests : IDisposable
         var r = await RunAsync();
 
         Assert.True(r.Passed, r.Text); // per-method lines are information
-        Assert.Contains(Lines(r, "FAIL"), l => l.Contains("cách BySegmentRange") && l.Contains("có vẻ trả cả đoạn"));
+        // The export recognises such a file by its length and cuts it like a whole segment (ExportPlanner).
+        Assert.Contains(Lines(r, "PASS"), l => l.Contains("cách BySegmentRange") && l.Contains("gửi cả đoạn ghi") && l.Contains("cắt lại"));
         Assert.Contains("BySegmentRange: trả cả đoạn", r.Text);
     }
 

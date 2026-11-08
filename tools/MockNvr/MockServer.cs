@@ -175,7 +175,7 @@ public static class MockServer
         var channel = track / 100;
 
         DateTime from, to;
-        if (o.Download == DownloadMode.Whole)
+        if (o.Download == DownloadMode.Whole || (o.Download == DownloadMode.Framed && segmentUri))
         {
             if (!segmentUri)
             {
@@ -227,7 +227,15 @@ public static class MockServer
         ctx.Items["note"] = note;
         try
         {
-            await HikPsWriter.WriteAsync(ctx.Response.Body, clip, duration, startPts, o.Audio, o.DownloadMbps, ctx.RequestAborted);
+            var body = ctx.Response.Body;
+            if (o.Download == DownloadMode.Framed && !segmentUri)
+            {
+                // The firmware's own block first, then the stream cut a little before its end (inside the last frame).
+                await body.WriteAsync(FramedPrefix, ctx.RequestAborted);
+                body = new HoldBackStream(body, 40);
+                ctx.Items["note"] = note + " [framed: 24-byte block, last frame cut]";
+            }
+            await HikPsWriter.WriteAsync(body, clip, duration, startPts, o.Audio, o.DownloadMbps, ctx.RequestAborted);
         }
         catch (OperationCanceledException)
         {
@@ -263,6 +271,9 @@ public static class MockServer
         return d;
     }
 
+    /// <summary>The 24 bytes DS-7732NI-M4 V5.04.081 sends before "IMKH" when downloading by time.</summary>
+    private static readonly byte[] FramedPrefix = [0, 0, 0, 0x40, 0, 0, 0, 0x13, 0, 0x0A, 0x3B, 0xC0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x28];
+
     private static string Size(long bytes) => bytes switch
     {
         < 10_000 => $"{bytes} B",
@@ -288,6 +299,35 @@ public sealed class ClipCache(string dataDir)
             if (!File.Exists(path)) return null;
             return _clips[c] = ElementaryClip.Load(path, c);
         }
+    }
+}
+
+/// <summary>Writes everything but the last <paramref name="hold"/> bytes: a stream that stops early.</summary>
+internal sealed class HoldBackStream(Stream inner, int hold) : Stream
+{
+    private readonly byte[] _held = new byte[hold];
+    private int _n;
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+    public override void Flush() => inner.Flush();
+    public override Task FlushAsync(CancellationToken ct) => inner.FlushAsync(ct);
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ct) => WriteAsync(buffer.AsMemory(offset, count), ct).AsTask();
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+    {
+        var all = new byte[_n + buffer.Length];
+        _held.AsSpan(0, _n).CopyTo(all);
+        buffer.Span.CopyTo(all.AsSpan(_n));
+        var emit = Math.Max(0, all.Length - hold);
+        if (emit > 0) await inner.WriteAsync(all.AsMemory(0, emit), ct);
+        _n = all.Length - emit;
+        all.AsSpan(emit).CopyTo(_held);
     }
 }
 

@@ -1,3 +1,9 @@
+## 0.9.3
+
+- Lưu video nhanh hơn hẳn với đầu ghi DS-7732NI-M4 firmware V5.04: tải đúng đoạn theo giờ (10 giây chưa tới 1 giây) thay vì cả đoạn ghi 5 tiếng (khoảng 700 MB, nửa phút). Đã thử trên đầu ghi thật.
+- Video lưu ra không còn khung hình vỡ ở cuối (đầu ghi cắt ngang khung cuối), và lấy dư khoảng 5 giây ở cuối để không thiếu cảnh đã đánh dấu.
+- Chạy chẩn đoán báo đúng như khi lưu video thật: đầu ghi gửi cả đoạn ghi thì phần mềm vẫn cắt đúng chỗ, không còn báo lỗi nhầm.
+
 ## 0.9.2
 
 - Hướng dẫn sử dụng (dấu hỏi hoặc F1) mở trong một cửa sổ riêng của phần mềm thay vì trình duyệt, đúng trang về màn hình đang xem. Đường dẫn ra Internet trong tài liệu vẫn mở bằng trình duyệt. Máy thiếu WebView2 thì mở bằng trình duyệt như cũ.

@@ -9,6 +9,12 @@ internal sealed partial class HikNvrClient
 {
     private const string DownloadPath = "/ISAPI/ContentMgmt/download";
 
+    /// <summary>
+    /// Added to the end of a download by time. DS-7732NI-M4 V5.04.081 (2026-11-08): a 10 s request came back from the
+    /// key frame ~3 s before the start to ~1 s before the end (key frames every 4 s).
+    /// </summary>
+    internal static readonly TimeSpan TimeEndPad = TimeSpan.FromSeconds(5);
+
     private sealed record PartPlan(string Uri, DateTime NominalStart, DateTime CoveredFrom, DateTime CoveredTo, TimeRange? Segment = null);
 
     private sealed record Attempt(DownloadMethod Method, HttpMethod Verb);
@@ -45,8 +51,10 @@ internal sealed partial class HikNvrClient
         var host = UriHost(HostOnly(Config.Host)) + (Config.RtspPort == 554 ? "" : ":" + Config.RtspPort.ToString(CultureInfo.InvariantCulture));
         var plans = new Dictionary<DownloadMethod, List<PartPlan>?>
         {
+            // The recorder starts at the key frame before the start and stops at a key frame around the end, so the
+            // end is asked a little later: the clip never misses the last seconds that were marked.
             [DownloadMethod.ByTime] = RecordingTimeline.Merge(segments)
-                .Select(s => (A: Max(from, s.Start), B: Min(to, s.End))).Where(r => r.B > r.A)
+                .Select(s => (A: Max(from, s.Start), B: Min(to + TimeEndPad, s.End))).Where(r => r.B > r.A)
                 .Select(r => new PartPlan(
                     $"rtsp://{host}/Streaming/tracks/{TrackId(channel, StreamKind.Main)}/?starttime={Wire(r.A)}&endtime={Wire(r.B)}",
                     r.A, r.A, r.B))
@@ -110,6 +118,10 @@ internal sealed partial class HikNvrClient
                     return null;
                 }
                 done += got;
+                // A recorder that cuts by bytes ends in the middle of a frame (seen on DS-7732NI-M4 V5.04.081): that
+                // frame would show as a smear at the end of the video, so it goes.
+                var cut = PsTail.DropIncompleteFrame(path);
+                if (cut > 0) Log.Info($"Download ch{channel} part {i + 1}: dropped the unfinished last frame ({cut} bytes)");
                 parts.Add(new DownloadedPart(path, plan[i].NominalStart, plan[i].CoveredFrom, plan[i].CoveredTo, method, plan[i].Segment));
             }
         }
@@ -164,13 +176,15 @@ internal sealed partial class HikNvrClient
             {
                 var buf = new byte[64 * 1024];
                 var head = 0;
-                while (head < 4)
+                var start = -1;
+                while (head < StartWindow && start < 0)
                 {
-                    var n = await ReadAsync(body, buf.AsMemory(head), stall, ct);
+                    var n = await ReadAsync(body, buf.AsMemory(head, StartWindow - head), stall, ct);
                     if (n == 0) break;
                     head += n;
+                    start = ProgramStreamStart(buf, head);
                 }
-                if (!IsProgramStream(buf, head))
+                if (start < 0)
                     return new(-1, head == 0 ? "empty body" : "not a PS stream: " + HikErrors.Trim(await RestTextAsync(body, buf, head, stall, ct)));
 
                 var ok = false;
@@ -178,8 +192,9 @@ internal sealed partial class HikNvrClient
                 {
                     await using (var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16, useAsync: true))
                     {
-                        await file.WriteAsync(buf.AsMemory(0, head), ct);
-                        long total = head;
+                        // Anything before the stream (a firmware's own block) is dropped: the file starts like a recorder file.
+                        await file.WriteAsync(buf.AsMemory(start, head - start), ct);
+                        long total = head - start;
                         onBytes(total);
                         while (true)
                         {
@@ -209,9 +224,22 @@ internal sealed partial class HikNvrClient
         catch (Exception e) when (IsLoss(e, ct)) { throw new NvrUnreachableException(HikErrors.LostDuringDownload, e); }
     }
 
-    /// <summary>Hikvision PS: the 40-byte "IMKH" header, or straight MPEG-PS pack headers (00 00 01 BA).</summary>
-    internal static bool IsProgramStream(byte[] b, int n) =>
-        n >= 4 && ((b[0] == 'I' && b[1] == 'M' && b[2] == 'K' && b[3] == 'H') || (b[0] == 0 && b[1] == 0 && b[2] == 1 && b[3] == 0xBA));
+    /// <summary>How much of the body start is searched for the stream.</summary>
+    private const int StartWindow = 256;
+
+    /// <summary>
+    /// Where the Hikvision PS starts: the 40-byte "IMKH" header or a pack header (00 00 01 BA), usually at 0.
+    /// DS-7732NI-M4 V5.04.081 puts a 24-byte block before "IMKH" when downloading by time. -1 when the first
+    /// 256 bytes hold neither (XML error, HTML, other content).
+    /// </summary>
+    internal static int ProgramStreamStart(byte[] b, int n)
+    {
+        var span = b.AsSpan(0, Math.Min(n, StartWindow));
+        var imkh = span.IndexOf("IMKH"u8);
+        var pack = span.IndexOf((ReadOnlySpan<byte>)[0, 0, 1, 0xBA]);
+        if (imkh < 0) return pack;
+        return pack < 0 ? imkh : Math.Min(imkh, pack);
+    }
 
     private async Task<string> RestTextAsync(Stream body, byte[] buf, int head, CancellationTokenSource stall, CancellationToken ct)
     {
