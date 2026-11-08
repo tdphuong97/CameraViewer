@@ -41,6 +41,10 @@ Name: "desktopicon"; Description: "Tạo biểu tượng ngoài màn hình"; Gro
 [Files]
 Source: "..\dist\app\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
+[InstallDelete]
+; 0.9.1 kept the guide next to the exe; it lives in help\ from 0.9.2.
+Type: files; Name: "{app}\huong-dan.html"
+
 [Icons]
 Name: "{autoprograms}\Camera Viewer"; Filename: "{app}\CameraViewer.exe"
 Name: "{autodesktop}\Camera Viewer"; Filename: "{app}\CameraViewer.exe"; Tasks: desktopicon

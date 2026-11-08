@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using Cv.App.Help;
 using Cv.App.Playback;
 using Cv.App.Video;
 using Cv.Core;
@@ -154,8 +155,10 @@ internal static class DemoSelfTest
             await Wait(2);
             Check(FramePump.Count == online, $"back to live (list reloaded): {FramePump.Count} sources");
 
+            await GuideWindowAsync(w, live, Check);
+
             await w.CheckUpdateAsync(manual: false);
-            Check(w.UpdateBanner.Visibility == Visibility.Visible && w.UpdateText.Text.Contains("0.9.1", StringComparison.Ordinal), $"update banner: \"{w.UpdateText.Text}\"");
+            Check(w.UpdateBanner.Visibility == Visibility.Visible && w.UpdateText.Text.Contains(DemoUpdateHandler.Next, StringComparison.Ordinal), $"update banner: \"{w.UpdateText.Text}\"");
             w.TestUpdateClick();
             await Wait(1.5);
             Check(w.UpdateProgress.Visibility == Visibility.Visible, $"update downloading: \"{w.UpdateText.Text}\"");
@@ -175,5 +178,93 @@ internal static class DemoSelfTest
         Log.Info($"SELFTEST DONE failures={fails}");
         w.Close();
         Application.Current.Shutdown(fails);
+    }
+
+    /// <summary>F1 opens the guide in its own window on the page about the screen in use; one window is reused; closing
+    /// it ends the WebView2 processes. Writes selftest-help.png (the guide as rendered) to the data folder.</summary>
+    static async Task GuideWindowAsync(MainWindow w, Live.LiveView live, Action<bool, string> check)
+    {
+        static Task Wait(double s) => Task.Delay(TimeSpan.FromSeconds(s));
+        if (!File.Exists(HelpWindow.FilePath))
+        {
+            check(false, "guide: help\\huong-dan.html shipped next to the exe");
+            return;
+        }
+        if (!HelpWindow.RuntimeAvailable())
+        {
+            Log.Info("SELFTEST SKIP guide window: no WebView2 runtime on this PC");
+            return;
+        }
+
+        w.OpenHelp();
+        var help = HelpWindow.Current;
+        if (help is null)
+        {
+            check(false, "guide: window opens");
+            return;
+        }
+        var done = await Task.WhenAny(help.TestNavigated.Task, Wait(30));
+        check(done == help.TestNavigated.Task && help.TestNavigated.Task.Result, "guide: opens in its own window (WebView2, offline file)");
+
+        async Task<string> Title()
+        {
+            await Wait(0.8);
+            var json = await help.TestScriptAsync("(document.querySelector('.page-head h1')||{}).textContent||''");
+            return string.IsNullOrEmpty(json) ? "" : System.Text.Json.JsonSerializer.Deserialize<string>(json) ?? "";
+        }
+        var t = await Title();
+        check(t == "Xem tất cả camera", $"guide on Trực tiếp: \"{t}\"");
+        await help.TestCaptureAsync(Path.Combine(AppPaths.Data, "selftest-help.png"));
+
+        live.TestEnterSingle(0);
+        await Wait(1);
+        w.OpenHelp();
+        t = await Title();
+        check(ReferenceEquals(HelpWindow.Current, help) && t == "Xem lớn một camera", $"guide on one camera, same window: \"{t}\"");
+        live.HandleEscape();
+
+        w.ShowPlaybackTab();
+        w.OpenHelp();
+        t = await Title();
+        check(t == "Xem lại một camera", $"guide on Xem lại: \"{t}\"");
+
+        w.ShowSaved();
+        w.OpenHelp();
+        t = await Title();
+        check(t == "Mở video đã lưu", $"guide on Video đã lưu: \"{t}\"");
+
+        w.ShowSettings();
+        w.OpenHelp();
+        t = await Title();
+        check(t == "Các mục trong Cài đặt", $"guide on Cài đặt: \"{t}\"");
+
+        // The pages only reached from the export dialog and the first start.
+        foreach (var (page, title) in new[] { ("xem-lai/luu-doan-video", "Lưu một đoạn video"), ("bat-dau/ket-noi-dau-ghi", "Kết nối đầu ghi lần đầu") })
+        {
+            HelpWindow.Open(w, page, () => { });
+            t = await Title();
+            check(t == title, $"guide page {page}: \"{t}\"");
+        }
+
+        var pid = help.TestBrowserProcessId;
+        help.Close();
+        var ended = false;
+        for (var i = 0; i < 40 && !ended; i++)
+        {
+            await Wait(0.25);
+            try
+            {
+                using var p = System.Diagnostics.Process.GetProcessById(pid);
+                ended = p.HasExited;
+            }
+            catch (ArgumentException)
+            {
+                ended = true;
+            }
+        }
+        check(HelpWindow.Current is null && pid != 0 && ended, $"guide closed: WebView2 processes ended (browser pid {pid})");
+
+        w.ShowLive();
+        await Wait(2);
     }
 }

@@ -12,7 +12,7 @@ Mở phần mềm bằng biểu tượng **Camera Viewer** ngoài màn hình. Ph
 | --- | --- | --- |
 | 1 | Ba tab **Trực tiếp**, **Xem lại**, **Video đã lưu** | Chuyển giữa xem trực tiếp, xem lại ghi hình và danh sách video đã lưu. Số trên tab **Video đã lưu** là số video đang lưu. |
 | 2 | Ô **RAM** | Bộ nhớ máy tính phần mềm đang dùng. Chỉ để tham khảo. |
-| 3 | Dấu hỏi **Hướng dẫn sử dụng** | Mở tài liệu này. Nhấn phím `F1` cũng được. |
+| 3 | Dấu hỏi **Hướng dẫn sử dụng** | Mở tài liệu này trong một cửa sổ riêng, đúng trang về màn hình đang xem. Nhấn phím `F1` cũng được. |
 | 4 | Bánh răng **Cài đặt** | Dành cho bộ phận IT. Người xem camera không cần vào. |
 | 5 | Ô camera | Hình camera, tên camera ở góc dưới bên trái. |
 | 6 | Các nút trên ô camera | Hiện khi để chuột lên ô: **Xem lại**, **Chụp ảnh**, **Phóng to**. |

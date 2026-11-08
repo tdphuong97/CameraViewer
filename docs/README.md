@@ -50,5 +50,5 @@ Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu 
 </table>
 
 {% hint style="info" %}
-Tài liệu này áp dụng cho Camera Viewer phiên bản 0.9.1, cập nhật ngày 07/11/2026. Trong phần mềm, bấm dấu hỏi ở góc trên bên phải hoặc nhấn `F1` để mở lại tài liệu này. Ảnh trong tài liệu chụp ở chế độ thử với camera giả, nên hình camera chỉ là các mảng màu.
+Tài liệu này áp dụng cho Camera Viewer phiên bản 0.9.2, cập nhật ngày 08/11/2026. Trong phần mềm, bấm dấu hỏi ở góc trên bên phải hoặc nhấn `F1` để mở lại tài liệu này trong một cửa sổ riêng. Ảnh trong tài liệu chụp ở chế độ thử với camera giả, nên hình camera chỉ là các mảng màu.
 {% endhint %}

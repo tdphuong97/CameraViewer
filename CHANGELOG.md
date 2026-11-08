@@ -1,3 +1,7 @@
+## 0.9.2
+
+- Hướng dẫn sử dụng (dấu hỏi hoặc F1) mở trong một cửa sổ riêng của phần mềm thay vì trình duyệt, đúng trang về màn hình đang xem. Đường dẫn ra Internet trong tài liệu vẫn mở bằng trình duyệt. Máy thiếu WebView2 thì mở bằng trình duyệt như cũ.
+
 ## 0.9.1
 
 - Thêm nút Hướng dẫn sử dụng (dấu hỏi, góc trên bên phải) và phím F1: mở tài liệu hướng dẫn đi kèm phần mềm, đọc được cả khi không có Internet.

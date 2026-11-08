@@ -64,7 +64,7 @@ Bộ nhớ máy tính phần mềm đang dùng, để bộ phận IT theo dõi. 
 
 <summary>Mở tài liệu hướng dẫn này từ phần mềm thế nào?</summary>
 
-Bấm biểu tượng dấu hỏi ở góc trên bên phải, cạnh bánh răng **Cài đặt**, hoặc nhấn phím `F1`. Tài liệu đi kèm phần mềm nên mở được cả khi không có Internet.
+Bấm biểu tượng dấu hỏi ở góc trên bên phải, cạnh bánh răng **Cài đặt**, hoặc nhấn phím `F1`. Tài liệu mở trong một cửa sổ riêng, đúng trang về màn hình đang xem; đọc xong bấm dấu **X** của cửa sổ đó để đóng. Tài liệu đi kèm phần mềm nên mở được cả khi không có Internet.
 
 <figure><img src="../.gitbook/assets/nut-huong-dan.svg" alt="Nút Hướng dẫn sử dụng hình dấu hỏi (1) ở góc trên bên phải"><figcaption></figcaption></figure>
 

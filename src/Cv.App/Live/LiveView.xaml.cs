@@ -85,7 +85,8 @@ public partial class LiveView : UserControl, IPage
     // ---- Self-test hooks (demo --selftest drives the same paths a click would) ----
 
     internal IReadOnlyList<ChannelInfo> TestOrder => _ordered;
-    internal bool TestInSingle => _single is not null;
+    internal bool InSingle => _single is not null;
+    internal bool TestInSingle => InSingle;
     internal bool TestSingleHasFrame => SingleTile.Video.HasFrame;
     internal Cv.Core.Video.IVideoSource? TestSingleSource => SingleTile.Source;
     internal void TestEnterSingle(int slot) { if (_tiles[slot].Camera is { } c) EnterSingle(c); }

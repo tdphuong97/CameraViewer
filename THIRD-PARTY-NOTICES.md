@@ -4,10 +4,11 @@ Camera Viewer dùng các thành phần sau. Cảm ơn các tác giả.
 
 | Thành phần | Dùng để | Giấy phép |
 |---|---|---|
-| FFmpeg 9.0 (thư viện avcodec, avformat, avutil, swscale, swresample, avfilter, avdevice) | Giải mã video, đọc luồng RTSP, chuyển video sang MP4 | GNU LGPL 2.1 trở lên. Kèm theo dưới dạng các file DLL **không sửa đổi**, lấy từ bản dựng "lgpl-shared" của BtbN/FFmpeg-Builds. Các DLL nằm riêng trong thư mục `ffmpeg\` cạnh `CameraViewer.exe` và được nạp lúc chạy, nên người dùng có thể thay bằng bản FFmpeg tương thích khác. Văn bản giấy phép: `ffmpeg\LICENSE.txt` |
+| FFmpeg 9.0 (thư viện avcodec, avformat, avutil, swscale, swresample) | Giải mã video, đọc luồng RTSP, chuyển video sang MP4 | GNU LGPL 2.1 trở lên. Kèm theo dưới dạng các file DLL **không sửa đổi**, lấy từ bản dựng "lgpl-shared" của BtbN/FFmpeg-Builds. Các DLL nằm riêng trong thư mục `ffmpeg\` cạnh `CameraViewer.exe` và được nạp lúc chạy, nên người dùng có thể thay bằng bản FFmpeg tương thích khác. Văn bản giấy phép: `ffmpeg\LICENSE.txt` |
 | FFmpeg.AutoGen 9.0.1.1 | Gọi thư viện FFmpeg từ .NET | MIT (Copyright (c) 2025 Ruslan Balanukhin; theo file LICENSE.txt trong gói NuGet, từ bản 9.0 dự án chuyển từ LGPL sang MIT) |
 | .NET (runtime, thư viện chuẩn, WPF) | Nền tảng chạy phần mềm | MIT |
 | System.Security.Cryptography.ProtectedData | Bảo vệ mật khẩu đầu ghi bằng Windows DPAPI | MIT |
+| Microsoft.Web.WebView2 1.0.4314.35 (SDK) | Hiện tài liệu hướng dẫn trong cửa sổ riêng của phần mềm. Bản thân WebView2 Runtime là một phần của Windows, không kèm trong bộ cài | Giấy phép kiểu BSD của Microsoft, xem phần cuối file này |
 | Inno Setup | Tạo bộ cài (chỉ dùng khi xây dựng bộ cài) | Giấy phép Inno Setup (miễn phí, xem jrsoftware.org/files/is/license.txt) |
 | Bản dịch tiếng Việt của Inno Setup (`build/Vietnamese.isl`), do memecoder thực hiện | Chữ tiếng Việt trong bộ cài | Bản dịch cộng đồng (không chính thức) của Inno Setup, dùng theo điều khoản phân phối của Inno Setup |
 
@@ -33,3 +34,35 @@ Hai thành phần này được tải riêng trên máy phát triển bằng `bu
 Văn bản đầy đủ của các giấy phép có trong gói của từng thành phần hoặc tại trang chủ của họ.
 
 Camera Viewer được phát hành theo giấy phép MIT (xem `LICENSE`).
+
+## Giấy phép Microsoft.Web.WebView2
+
+```text
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * The name of Microsoft Corporation, or the names of its contributors
+may not be used to endorse or promote products derived from this
+software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

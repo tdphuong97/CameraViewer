@@ -5,6 +5,12 @@ description: Những gì thay đổi ở từng phiên bản Camera Viewer.
 # Nhật ký thay đổi
 
 {% updates format="full" %}
+{% update date="2026-11-08" %}
+## Phiên bản 0.9.2
+
+* Hướng dẫn sử dụng mở trong một cửa sổ riêng của phần mềm thay vì trình duyệt, và mở đúng trang về màn hình đang xem.
+{% endupdate %}
+
 {% update date="2026-11-07" %}
 ## Phiên bản 0.9.1
 

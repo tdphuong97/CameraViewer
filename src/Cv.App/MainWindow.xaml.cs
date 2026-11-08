@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Cv.App.Help;
 using Cv.App.Live;
 using Cv.App.Logic;
 using Cv.App.Platform;
@@ -136,17 +137,33 @@ public partial class MainWindow : Window, IShell
     void OnTabSaved(object sender, RoutedEventArgs e) => ShowSaved();
     void OnTabSettings(object sender, RoutedEventArgs e) => ShowSettings();
 
-    // ---- User guide: the offline HTML shipped next to the exe, else the copy on GitHub ----
+    // ---- User guide: the offline HTML shipped in help\, shown in its own window (WebView2); without WebView2 it opens
+    // in the browser, and without the file the copy on GitHub does ----
 
-    internal const string HelpFile = "huong-dan.html";
     internal const string HelpUrl = "https://github.com/tdphuong97/CameraViewer/blob/main/docs/README.md";
 
     void OnHelp(object sender, RoutedEventArgs e) => OpenHelp();
 
     internal void OpenHelp()
     {
-        var local = System.IO.Path.Combine(AppContext.BaseDirectory, HelpFile);
-        ShowError(System.IO.File.Exists(local) ? Shell.OpenFile(local) : Shell.OpenUrl(HelpUrl));
+        var local = HelpWindow.FilePath;
+        if (!System.IO.File.Exists(local)) ShowError(Shell.OpenUrl(HelpUrl));
+        else if (HelpWindow.RuntimeAvailable()) HelpWindow.Open(this, HelpPage(), () => ShowError(Shell.OpenFile(local)));
+        else ShowError(Shell.OpenFile(local));
+    }
+
+    /// <summary>The guide page about what is on screen (paths in docs\, without .md).</summary>
+    internal string HelpPage()
+    {
+        if (ModalHost.Visibility == Visibility.Visible && ModalContent.Content is ExportDialog) return "xem-lai/luu-doan-video";
+        return _current switch
+        {
+            LiveView l => l.InSingle ? "xem-camera/xem-lon-mot-camera" : "xem-camera/xem-tat-ca-camera",
+            PlaybackView => "xem-lai/xem-lai-camera",
+            SavedView => "xem-lai/video-da-luu",
+            SettingsView => _s.IsConfigured ? "tham-khao/cac-muc-cai-dat" : "bat-dau/ket-noi-dau-ghi",
+            _ => "",
+        };
     }
 
     void OnPreviewKeyDown(object sender, KeyEventArgs e)
