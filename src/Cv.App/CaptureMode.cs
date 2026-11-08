@@ -49,6 +49,11 @@ internal static class CaptureMode
                     await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.5, o.DelaySeconds / 2)));
                     w.PlaybackPage.OpenSavePanel();
                     break;
+                case "people":
+                    w.ShowPlaybackTab();
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.5, o.DelaySeconds / 2)));
+                    w.PlaybackPage.OpenPeoplePanel();
+                    break;
                 case "update":
                     w.ShowLive();
                     await w.CheckUpdateAsync(manual: false);

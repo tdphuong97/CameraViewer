@@ -6,6 +6,12 @@ description: Những gì thay đổi ở từng phiên bản Camera Viewer.
 
 {% updates format="full" %}
 {% update date="2026-11-08" %}
+## Phiên bản 0.9.5
+
+* Mới: **Có người** ở màn Xem lại. Nút bên phải thanh thời gian cho biết số lượt camera thấy có người trong ngày; bấm vào để xem ảnh từng lượt, bấm ảnh để xem lại đúng lúc đó. Những lúc có người hiện thành vạch xanh lá trên thanh thời gian. Dùng sẵn phát hiện người của camera và đầu ghi, không tốn thêm bộ nhớ máy tính.
+* Hướng dẫn: thêm trang [Tìm lúc có người](../xem-lai/tim-nguoi.md), chỉnh lời theo bảng Lưu video mới.
+{% endupdate %}
+{% update date="2026-11-08" %}
 ## Phiên bản 0.9.4
 
 * Lưu video dễ hơn: ở màn Xem lại chỉ còn một nút **Lưu video**. Bấm vào là có bảng ba bước đánh số bên cạnh video (Từ lúc, Đến lúc, Lưu video), đã điền sẵn 5 phút quanh lúc đang xem. Nút **Giờ đang xem** lấy đúng giây của video.

@@ -12,3 +12,6 @@ TestResults/
 # Plan workspace and design docs, never commit
 docs/superpowers/
 .superpowers/
+
+# Agent worktrees (local only)
+.claude/worktrees/

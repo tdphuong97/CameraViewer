@@ -4,7 +4,7 @@ namespace Cv.App;
 
 /// <summary>
 /// Command line: --demo, --updated, and the screenshot hook
-/// --capture &lt;file.png&gt; [--view live|single|playback|export|saved|settings|firstrun|update] [--size 1600x900] [--delay 3].
+/// --capture &lt;file.png&gt; [--view live|single|playback|export|people|saved|settings|firstrun|update] [--size 1600x900] [--delay 3].
 /// </summary>
 public sealed class AppOptions
 {

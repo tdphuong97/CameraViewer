@@ -55,6 +55,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <playback:SavePanel x:Name="SavePanel" Grid.Column="1" Margin="14,0,0,0" />
+            <playback:PeoplePanel x:Name="PeoplePanel" Grid.Column="1" Margin="14,0,0,0" />
             <Grid Background="Black">
                 <video:VideoView x:Name="Video" />
                 <Border x:Name="NameChip" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="10,5"
@@ -108,9 +109,13 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <controls:TimelineControl x:Name="Timeline" />
-                <Border Grid.Column="1" Style="{StaticResource SegmentGroup}" Margin="16,0,0,0" VerticalAlignment="Center">
+                <Button x:Name="PeopleButton" Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" MinHeight="38"
+                        app:Ui.Glyph="&#xE716;" Content="Có người" Click="OnPeople" Visibility="Collapsed"
+                        ToolTip="Những lúc camera thấy có người trong ngày (vạch xanh lá trên thanh thời gian)" />
+                <Border Grid.Column="2" Style="{StaticResource SegmentGroup}" Margin="10,0,0,0" VerticalAlignment="Center">
                     <StackPanel x:Name="ZoomButtons" Orientation="Horizontal">
                         <RadioButton Style="{StaticResource SegmentButton}" Content="24 giờ" Tag="24" GroupName="zoom" Click="OnZoom" />
                         <RadioButton Style="{StaticResource SegmentButton}" Content="6 giờ" Tag="6" GroupName="zoom" Click="OnZoom" />

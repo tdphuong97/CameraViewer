@@ -12,7 +12,7 @@ internal sealed class DemoNvrClientFactory : INvrClientFactory
 /// A recorder that does not exist: 17 cameras, channel 5 offline, 1-hour recordings with a daily gap 02:00–02:30 and a
 /// few random gaps per camera and day. URLs use the demo:// scheme understood by DemoVideoSourceFactory.
 /// </summary>
-internal sealed class DemoNvrClient(NvrConfig config) : INvrClient
+internal sealed class DemoNvrClient(NvrConfig config) : INvrClient, INvrDetections
 {
     const string Stamp = "yyyyMMdd'T'HHmmss";
     static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -100,6 +100,14 @@ internal sealed class DemoNvrClient(NvrConfig config) : INvrClient
         $"demo://playback/{channel}/{(int)kind}?from={from.ToString(Stamp, Inv)}&to={(to ?? from.AddHours(1)).ToString(Stamp, Inv)}";
 
     public Task<TimeMode> ResolveTimeModeAsync(CancellationToken ct) => Task.FromResult(TimeMode.LocalWithZ);
+
+    public async Task<IReadOnlyList<DetectionEvent>> SearchPeopleAsync(int channel, DateTime from, DateTime to, CancellationToken ct)
+    {
+        await Task.Delay(300, ct);
+        return DemoDetections.People(channel, from, to, DateTime.Now);
+    }
+
+    public Task<byte[]> GetPictureAsync(string pictureUri, CancellationToken ct) => DemoDetections.PictureAsync(pictureUri, ct);
 
     public void Dispose() { }
 }

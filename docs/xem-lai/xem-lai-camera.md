@@ -6,7 +6,7 @@ description: Xem lại ghi hình của một camera theo ngày giờ, tua tới 
 
 **Ai làm:** Người xem camera · **Mất khoảng:** 1 phút
 
-<figure><img src="../.gitbook/assets/xem-lai-so.svg" alt="Màn hình Xem lại, đánh số các vùng từ 1 đến 8"><figcaption><p>Màn hình Xem lại</p></figcaption></figure>
+<figure><img src="../.gitbook/assets/xem-lai-so.svg" alt="Màn hình Xem lại, đánh số các vùng từ 1 đến 9"><figcaption><p>Màn hình Xem lại</p></figcaption></figure>
 
 {% stepper %}
 {% step %}
@@ -41,7 +41,7 @@ Thanh thời gian (6) hiện cả ngày từ 00:00 đến 24:00. **Vạch xanh l
 {% endstepper %}
 
 {% hint style="info" %}
-Nút xanh **Lưu video** (8) lưu một đoạn đang xem ra file MP4. Xem [Lưu một đoạn video](luu-doan-video.md).
+Nút xanh **Lưu video** (8) lưu một đoạn đang xem ra file MP4: xem [Lưu một đoạn video](luu-doan-video.md). Nút **Có người** (9) liệt kê những lúc camera thấy có người, kèm ảnh: xem [Tìm lúc có người](tim-nguoi.md).
 {% endhint %}
 
 ## Phần mềm báo gì khi xem lại

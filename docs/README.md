@@ -37,6 +37,11 @@ Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu 
       <td><a href="xem-lai/xem-lai-camera.md">xem-lai-camera</a></td>
     </tr>
     <tr>
+      <td><strong>Tìm lúc có người</strong></td>
+      <td>Xem ảnh những lúc camera thấy người, bấm để xem lại.</td>
+      <td><a href="xem-lai/tim-nguoi.md">tim-nguoi</a></td>
+    </tr>
+    <tr>
       <td><strong>Lưu một đoạn video</strong></td>
       <td>Bấm Lưu video, làm theo 3 bước đánh số.</td>
       <td><a href="xem-lai/luu-doan-video.md">luu-doan-video</a></td>
@@ -50,5 +55,5 @@ Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu 
 </table>
 
 {% hint style="info" %}
-Tài liệu này áp dụng cho Camera Viewer phiên bản 0.9.4, cập nhật ngày 08/11/2026. Trong phần mềm, bấm dấu hỏi ở góc trên bên phải hoặc nhấn `F1` để mở lại tài liệu này trong một cửa sổ riêng. Ảnh trong tài liệu chụp ở chế độ thử với camera giả, nên hình camera chỉ là các mảng màu.
+Tài liệu này áp dụng cho Camera Viewer phiên bản 0.9.5, cập nhật ngày 08/11/2026. Trong phần mềm, bấm dấu hỏi ở góc trên bên phải hoặc nhấn `F1` để mở lại tài liệu này trong một cửa sổ riêng. Ảnh trong tài liệu chụp ở chế độ thử với camera giả, nên hình camera chỉ là các mảng màu.
 {% endhint %}

@@ -1,0 +1,88 @@
+<UserControl x:Class="Cv.App.Playback.PeoplePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Cv.App"
+             Focusable="True" Width="340">
+    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+            CornerRadius="10">
+        <DockPanel Margin="18,12,8,12">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,10,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE716;" FontSize="18" Foreground="{StaticResource OkBrush}" />
+                        <TextBlock Text="Có người" FontSize="19" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                            app:Ui.Glyph="&#xE711;" app:Ui.GlyphSize="12" Padding="10,0" MinHeight="32" ToolTip="Đóng (Esc)"
+                            Click="OnClose" />
+                </Grid>
+                <TextBlock x:Name="CameraText" Margin="0,8,0,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="HintText" Margin="0,2,0,10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+                           Text="Bấm vào ảnh để xem lại lúc đó." />
+            </StackPanel>
+
+            <Grid>
+                <ListBox x:Name="List" Background="Transparent" BorderThickness="0" Padding="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                         VirtualizingPanel.ScrollUnit="Pixel" SelectionMode="Single" SelectionChanged="OnPick">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0,0,8,10" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Card" Background="{StaticResource RaisedBrush}" CornerRadius="8"
+                                                BorderBrush="Transparent" BorderThickness="2" Padding="6">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Card" Property="Background" Value="{StaticResource RaisedHoverBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource OkBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <Border Height="158" CornerRadius="5" Background="Black" ClipToBounds="True">
+                                    <Grid>
+                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE91B;" FontSize="22" Foreground="#3A4150"
+                                                   HorizontalAlignment="Center" />
+                                        <Image Source="{Binding Thumb}" Stretch="UniformToFill" Loaded="OnThumbShown"
+                                               DataContextChanged="OnThumbContext" />
+                                    </Grid>
+                                </Border>
+                                <DockPanel Margin="2,7,2,1">
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Length}" Foreground="{StaticResource MutedBrush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Clock}" FontSize="16" FontWeight="SemiBold"
+                                               Typography.NumeralAlignment="Tabular" />
+                                </DockPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Searching, nothing found, not supported, error -->
+                <StackPanel x:Name="StateBox" VerticalAlignment="Top" Margin="0,8,10,0" Visibility="Collapsed">
+                    <TextBlock x:Name="StateIcon" Style="{StaticResource Icon}" FontSize="22" HorizontalAlignment="Left"
+                               Foreground="{StaticResource MutedBrush}" />
+                    <TextBlock x:Name="StateText" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="15" />
+                    <TextBlock x:Name="StateHint" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" />
+                    <Button x:Name="RetryButton" Content="Thử lại" HorizontalAlignment="Left" Margin="0,14,0,0" Click="OnRetry"
+                            Visibility="Collapsed" />
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

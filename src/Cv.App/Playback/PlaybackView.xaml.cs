@@ -22,6 +22,10 @@ public partial class PlaybackView : UserControl, IPage
     (ChannelInfo Camera, DateTime At)? _request;
     DateTime? _resumeAt;
     bool _active;
+    // People seen by the cameras (recorder-side detection): current camera and day.
+    CancellationTokenSource? _peopleCts;
+    readonly Dictionary<(string Nvr, int Channel, DateTime Day), IReadOnlyList<PeopleVisit>> _peopleCache = [];
+    IReadOnlyList<PeopleVisit> _visits = [];
     bool _settingCamera;
     long _shownSecond = -1;
 
@@ -55,11 +59,17 @@ public partial class PlaybackView : UserControl, IPage
         SavePanel.Closed += () =>
         {
             Timeline.SetRange(null, null);
-            NameChip.Visibility = Visibility.Visible;
+            UpdateNameChip();
         };
+        PeoplePanel.Closed += UpdateNameChip;
+        PeoplePanel.Picked += v => _ctrl.Jump(v.Start.AddSeconds(-3)); // a moment before, to see them come in
+        PeoplePanel.RetryRequested += () => { if (_ctrl.Camera is { } c) LoadPeople(c, _ctrl.Day, force: true); };
         _s.NvrChanged += () =>
         {
             SavePanel.Close();
+            PeoplePanel.Close();
+            _peopleCts?.Cancel();
+            _peopleCache.Clear();
             _ctrl.Reset();
             _resumeAt = null;
             CameraBox.ItemsSource = null;
@@ -132,6 +142,7 @@ public partial class PlaybackView : UserControl, IPage
         Timeline.Day = day;
         NameChipText.Text = cam.Name;
         UpdateDayButtons(day);
+        LoadPeople(cam, day);
         await _ctrl.LoadAsync(cam, day, at);
     }
 
@@ -305,15 +316,22 @@ public partial class PlaybackView : UserControl, IPage
 
     void OnSaveClip(object sender, RoutedEventArgs e) => OpenSavePanel();
 
-    /// <summary>Esc closes the panel.</summary>
+    /// <summary>Esc closes the open panel.</summary>
     public bool HandleEscape()
     {
-        if (!SavePanel.IsOpen) return false;
-        SavePanel.Close();
+        if (SavePanel.IsOpen) SavePanel.Close();
+        else if (PeoplePanel.IsOpen) PeoplePanel.Close();
+        else return false;
         return true;
     }
 
     internal bool SavePanelOpen => SavePanel.IsOpen;
+    internal bool PeoplePanelOpen => PeoplePanel.IsOpen;
+
+    /// <summary>The narrower video fills its width with a panel open: the name chip would cover the camera's own date
+    /// and time (the panels name the camera anyway).</summary>
+    void UpdateNameChip() =>
+        NameChip.Visibility = SavePanel.IsOpen || PeoplePanel.IsOpen ? Visibility.Collapsed : Visibility.Visible;
 
     internal void OpenSavePanel()
     {
@@ -328,10 +346,9 @@ public partial class PlaybackView : UserControl, IPage
             return;
         }
         var (from, to) = DefaultRange(Whole(_ctrl.Position), _ctrl.Day, _s.DeviceNow);
+        PeoplePanel.Close();
         SavePanel.Open(nvr.Id, cam, _ctrl.Day, from, to);
-        // The narrower video fills its width: the name chip would cover the camera's own date and time (the panel names
-        // the camera anyway).
-        NameChip.Visibility = Visibility.Collapsed;
+        UpdateNameChip();
         Timeline.SetRange(from, to);
         // A 5-minute range is a sliver on 24 hours: show one hour around it.
         if (Timeline.View.Length > TimeSpan.FromHours(1)) Timeline.Zoom(TimeSpan.FromHours(1));
@@ -353,10 +370,83 @@ public partial class PlaybackView : UserControl, IPage
         return (from, to);
     }
 
+    // ---- Có người: the times the camera saw a person ----
+
+    void OnPeople(object sender, RoutedEventArgs e) => OpenPeoplePanel();
+
+    internal void OpenPeoplePanel()
+    {
+        if (_ctrl.Camera is not { } cam)
+        {
+            _shell.Toast("Hãy chọn camera trước.", ToastKind.Warn);
+            return;
+        }
+        SavePanel.Close();
+        PeoplePanel.Open();
+        UpdateNameChip();
+        // Today keeps growing: look again; an earlier day comes from the cache.
+        LoadPeople(cam, _ctrl.Day, force: _ctrl.Day == _s.DeviceNow.Date);
+    }
+
+    /// <summary>Asks the recorder for the day's detections of this camera: green marks on the timeline, the count on
+    /// the button, the list in the panel when open. Hidden for recorders that cannot search them.</summary>
+    async void LoadPeople(ChannelInfo cam, DateTime day, bool force = false)
+    {
+        _peopleCts?.Cancel();
+        var cts = _peopleCts = new CancellationTokenSource();
+        day = day.Date;
+        _visits = [];
+        Timeline.Marks = [];
+        if (_s.Nvr is not INvrDetections detections || _s.NvrConfig is not { } nvr)
+        {
+            PeopleButton.Visibility = Visibility.Collapsed;
+            PeoplePanel.Close();
+            return;
+        }
+        PeopleButton.Visibility = Visibility.Visible;
+        PeopleButton.Content = "Có người · …";
+        if (PeoplePanel.IsOpen) PeoplePanel.ShowLoading(cam.Name, day);
+        var key = (nvr.Id, cam.No, day);
+        try
+        {
+            if (force || !_peopleCache.TryGetValue(key, out var visits))
+            {
+                var now = _s.DeviceNow;
+                var end = day.AddDays(1) < now ? day.AddDays(1) : now;
+                visits = PeopleTimeline.Merge(await detections.SearchPeopleAsync(cam.No, day, end, cts.Token));
+                if (day < now.Date) _peopleCache[key] = visits; // a past day no longer changes
+            }
+            if (cts.IsCancellationRequested) return;
+            _visits = visits;
+            Timeline.Marks = visits.Select(v => new TimeRange(v.Start, v.End)).ToList();
+            PeopleButton.Content = $"Có người · {visits.Count}";
+            if (PeoplePanel.IsOpen) PeoplePanel.ShowVisits(cam.Name, day, visits, detections.GetPictureAsync, _ctrl.Camera is null ? null : _ctrl.Position);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        catch (NvrDetectionUnsupportedException)
+        {
+            if (cts.IsCancellationRequested) return;
+            PeopleButton.Visibility = Visibility.Collapsed;
+            if (PeoplePanel.IsOpen) PeoplePanel.ShowUnsupported(cam.Name, day);
+        }
+        catch (Exception ex)
+        {
+            if (cts.IsCancellationRequested) return;
+            Log.Warn($"People search failed (ch{cam.No} {day:yyyy-MM-dd})", ex);
+            PeopleButton.Content = "Có người";
+            if (PeoplePanel.IsOpen)
+                PeoplePanel.ShowError(cam.Name, day, ex is NvrException ? ex.Message : "Chưa tìm được những lúc có người. Hãy thử lại.");
+        }
+    }
+
     // ---- Self-test and capture hooks ----
 
     internal PlaybackController TestController => _ctrl;
     internal SavePanel TestPanel => SavePanel;
+    internal PeoplePanel TestPeople => PeoplePanel;
+    internal IReadOnlyList<PeopleVisit> TestVisits => _visits;
+    internal int TestMarks => Timeline.Marks.Count;
+    internal string TestPeopleButton => PeopleButton.Visibility == Visibility.Visible ? PeopleButton.Content as string ?? "" : "";
     internal (DateTime? Start, DateTime? End) TestTimelineRange => Timeline.Range;
     internal void TestTogglePause() => OnPlayPause(this, new RoutedEventArgs());
 }

@@ -17,6 +17,7 @@
 ## Xem lại và lưu video
 
 * [Xem lại một camera](xem-lai/xem-lai-camera.md)
+* [Tìm lúc có người](xem-lai/tim-nguoi.md)
 * [Lưu một đoạn video](xem-lai/luu-doan-video.md)
 * [Mở video đã lưu](xem-lai/video-da-luu.md)
 

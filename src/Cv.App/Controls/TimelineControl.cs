@@ -21,6 +21,7 @@ public sealed class TimelineControl : FrameworkElement
     static readonly Brush TrackBrush = Frozen(Color.FromRgb(0x0F, 0x11, 0x15));
     static readonly Pen TrackPen = FrozenPen(Color.FromRgb(0x2A, 0x2F, 0x3A), 1);
     static readonly Brush SpanBrush = Frozen(Color.FromRgb(0x3B, 0x82, 0xF6));
+    static readonly Brush MarkBrush = Frozen(Color.FromRgb(0x22, 0xC5, 0x5E));
     static readonly Brush LabelBrush = Frozen(Color.FromRgb(0x8A, 0x93, 0xA6));
     static readonly Pen TickPen = FrozenPen(Color.FromRgb(0x3A, 0x41, 0x50), 1);
     static readonly Brush RangeFill = Frozen(Color.FromArgb(0x55, 0xF5, 0x9E, 0x0B));
@@ -38,6 +39,7 @@ public sealed class TimelineControl : FrameworkElement
 
     readonly Dictionary<string, FormattedText> _labels = [];
     IReadOnlyList<TimeRange> _spans = [];
+    IReadOnlyList<TimeRange> _marks = [];
     DateTime? _position, _rangeStart, _rangeEnd;
     DateTime? _now;
     double? _hoverX;
@@ -78,6 +80,17 @@ public sealed class TimelineControl : FrameworkElement
         set
         {
             _spans = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Times a person was seen (green, under the recorded bars).</summary>
+    public IReadOnlyList<TimeRange> Marks
+    {
+        get => _marks;
+        set
+        {
+            _marks = value;
             InvalidateVisual();
         }
     }
@@ -138,6 +151,13 @@ public sealed class TimelineControl : FrameworkElement
             var x0 = Math.Max(0, View.ToX(s.Start, w));
             var x1 = Math.Min(w, View.ToX(s.End, w));
             dc.DrawRectangle(SpanBrush, null, new Rect(x0, TrackTop + 7, Math.Max(1.5, x1 - x0), TrackHeight - 14));
+        }
+        foreach (var m in _marks)
+        {
+            if (m.End < View.ViewStart || m.Start > View.ViewEnd) continue;
+            var x0 = View.ToX(m.Start, w);
+            var x1 = View.ToX(m.End, w);
+            dc.DrawRectangle(MarkBrush, null, new Rect(x0 - 1.5, TrackTop + TrackHeight - 7, Math.Max(4, x1 - x0 + 3), 5));
         }
         if (_now is { } now && now < View.ViewEnd)
         {

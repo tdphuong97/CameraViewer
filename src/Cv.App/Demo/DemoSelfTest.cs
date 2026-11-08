@@ -138,6 +138,24 @@ internal static class DemoSelfTest
             pb.OpenSavePanel();
             Check(pb.HandleEscape() && !pb.SavePanelOpen, "Esc closes the panel");
 
+            // Có người: the recorder's people detections for this camera and day.
+            await Wait(0.5);
+            Check(pb.TestVisits.Count > 0 && pb.TestPeopleButton == $"Có người · {pb.TestVisits.Count}" && pb.TestMarks == pb.TestVisits.Count,
+                $"people: \"{pb.TestPeopleButton}\", {pb.TestMarks} marks on the timeline");
+            pb.OpenPeoplePanel();
+            await Wait(1.5);
+            var people = pb.TestPeople;
+            Check(pb.PeoplePanelOpen && people.TestVisits.Count == pb.TestVisits.Count, $"Có người panel lists {people.TestVisits.Count} visits");
+            Check(people.TestThumbs > 0, $"pictures shown ({people.TestThumbs} loaded)");
+            Check(w.HelpPage() == "xem-lai/tim-nguoi", "F1 with the people panel open: page about it");
+            var visit = people.TestVisits[0];
+            people.TestPick(0);
+            await Wait(2.5);
+            Check(Math.Abs((ctrl.Position - visit.Start).TotalSeconds) < 8, $"click a visit: plays {ctrl.Position:HH:mm:ss} for a person at {visit.Start:HH:mm:ss}");
+            pb.OpenSavePanel();
+            Check(pb.SavePanelOpen && !pb.PeoplePanelOpen, "one panel at a time");
+            pb.HandleEscape();
+
             w.WindowState = WindowState.Minimized;
             await Wait(0.5);
             Check(FramePump.Count == 0, $"minimized: every source closed ({FramePump.Count})");
