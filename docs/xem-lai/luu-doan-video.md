@@ -12,7 +12,7 @@ description: Lưu một đoạn ghi hình ra file MP4 trong ba bước có đán
 
 {% stepper %}
 {% step %}
-### Bấm Lưu video
+### Mở bảng Lưu video
 
 Khi đang xem tới đoạn cần lưu, bấm nút xanh **Lưu video** ở bên phải, cạnh nút **Chụp ảnh**. Bảng **Lưu video** mở ra bên phải hình; video vẫn chạy bên cạnh.
 
@@ -33,7 +33,7 @@ Cũng có thể kéo hai đầu đoạn màu cam trên thanh thời gian. Dòng 
 {% endstep %}
 
 {% step %}
-### Bấm Lưu video
+### Bấm Lưu video trong bảng
 
 Bấm **Lưu video** (3) trong bảng. Bảng đóng lại và thông báo **Đang lưu video… Xem ở mục Video đã lưu.** hiện ra. Bạn có thể tiếp tục xem camera trong lúc phần mềm lưu.
 {% endstep %}

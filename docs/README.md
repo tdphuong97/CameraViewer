@@ -10,7 +10,7 @@ description: Camera Viewer giúp xem trực tiếp, xem lại và lưu video cam
 
 | Vai trò | Làm được gì | Đọc từ |
 | --- | --- | --- |
-| **Người xem camera** | Xem trực tiếp, xem lại, chụp ảnh, lưu đoạn video | [Làm quen giao diện](bat-dau/lam-quen-giao-dien.md) |
+| **Người xem camera** | Xem trực tiếp, xem lại, chụp ảnh, lưu video | [Làm quen giao diện](bat-dau/lam-quen-giao-dien.md) |
 | **Bộ phận IT** | Cài phần mềm, kết nối đầu ghi, cập nhật, chạy chẩn đoán | [Cài đặt phần mềm](bat-dau/cai-dat-phan-mem.md) |
 
 Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu ghi: bộ phận IT nhập một lần, sau đó chỉ cần bấm biểu tượng là thấy camera.
@@ -38,7 +38,7 @@ Người xem camera không cần biết địa chỉ IP hay mật khẩu đầu 
     </tr>
     <tr>
       <td><strong>Lưu một đoạn video</strong></td>
-      <td>Bấm Lưu video, chỉnh giờ nếu cần, bấm Lưu.</td>
+      <td>Bấm Lưu video, làm theo 3 bước đánh số.</td>
       <td><a href="xem-lai/luu-doan-video.md">luu-doan-video</a></td>
     </tr>
     <tr>
