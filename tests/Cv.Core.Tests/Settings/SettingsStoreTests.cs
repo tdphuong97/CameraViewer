@@ -22,6 +22,9 @@ public class SettingsStoreTests : IDisposable
         CheckUpdates = false,
         LiveGrid = 16,
         LiveOrder = [new CameraRef("n1", 3), new CameraRef("n1", 1)],
+        LiveHidden = [new CameraRef("n1", 2)],
+        LivePresets = [new LiveArrangement { Name = "Trực đêm", Grid = 105, Order = [new CameraRef("n1", 1)], Hidden = [new CameraRef("n1", 3)] }],
+        LivePreset = "Trực đêm",
         Window = new WindowBounds(10, 20, 1600, 900, true),
     };
 
@@ -42,6 +45,12 @@ public class SettingsStoreTests : IDisposable
         var loaded = new SettingsStore(FilePath).Load();
         Assert.Equal(Sample().Nvrs, loaded.Nvrs);
         Assert.Equal(Sample().LiveOrder, loaded.LiveOrder);
+        Assert.Equal(Sample().LiveHidden, loaded.LiveHidden);
+        Assert.Equal("Trực đêm", loaded.LivePreset);
+        var preset = Assert.Single(loaded.LivePresets);
+        Assert.Equal(("Trực đêm", 105), (preset.Name, preset.Grid));
+        Assert.Equal(Sample().LivePresets[0].Order, preset.Order);
+        Assert.Equal(Sample().LivePresets[0].Hidden, preset.Hidden);
         Assert.Equal(Sample().Window, loaded.Window);
         Assert.Equal((@"D:\Video", @"D:\Anh", HwDecodeMode.Off, false, false, 16),
             (loaded.ExportFolder, loaded.SnapshotFolder, loaded.HwDecode, loaded.PauseWhenMinimized, loaded.CheckUpdates, loaded.LiveGrid));
@@ -125,6 +134,37 @@ public class SettingsStoreTests : IDisposable
         Assert.Equal("", s.Nvrs[0].Host);
         Assert.Empty(s.LiveOrder);
         Assert.Equal(AppSettings.DefaultExportFolder, s.ExportFolder);
+    }
+
+    [Fact]
+    public void Settings_without_the_live_arrangement_fields_load_with_the_default_one()
+    {
+        File.WriteAllText(FilePath, "{\"version\":1,\"settings\":{\"liveGrid\":9,\"liveOrder\":[{\"nvrId\":\"a\",\"channel\":2}]},\"secrets\":{}}");
+        var s = new SettingsStore(FilePath).Load();
+        Assert.Equal(9, s.LiveGrid);
+        Assert.Single(s.LiveOrder);
+        Assert.Empty(s.LiveHidden);
+        Assert.Empty(s.LivePresets);
+        Assert.Equal("", s.LivePreset);
+    }
+
+    [Fact]
+    public void Broken_live_arrangements_are_cleaned_up()
+    {
+        File.WriteAllText(FilePath, """
+            {"version":1,"settings":{
+              "liveHidden":[null,{"nvrId":null,"channel":1},{"nvrId":"a","channel":4}],
+              "livePresets":[null,{"name":null},{"name":"  "},{"name":"Mặc định","grid":4},
+                             {"name":"Đêm ","grid":105,"order":null,"hidden":[null,{"nvrId":"a","channel":2}]},{"name":"đêm"}],
+              "livePreset":"Không có"},"secrets":{}}
+            """);
+        var s = new SettingsStore(FilePath).Load();
+        Assert.Equal([new CameraRef("a", 4)], s.LiveHidden);
+        var p = Assert.Single(s.LivePresets); // null, blank, the reserved default name and the duplicate are dropped
+        Assert.Equal(("Đêm", 105), (p.Name, p.Grid));
+        Assert.Empty(p.Order);
+        Assert.Equal([new CameraRef("a", 2)], p.Hidden);
+        Assert.Equal("", s.LivePreset); // the active name no longer exists
     }
 
     [Fact]

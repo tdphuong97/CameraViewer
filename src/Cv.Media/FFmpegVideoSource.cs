@@ -7,11 +7,16 @@ using FFmpeg.AutoGen;
 namespace Cv.Media;
 
 /// <summary>
-/// One RTSP stream or file: open, demux (video only), decode (D3D11VA or software), scale into the target box as BGRA,
-/// hand frames to the UI through a triple buffer. Everything native is owned by one background thread.
+/// One RTSP stream or file: open, demux (video; the sound track only when asked for), decode (D3D11VA or software), scale
+/// into the target box as BGRA, hand frames to the UI through a triple buffer. Sound is decoded on the same thread, in
+/// packet order, straight into the sound output (a few hundred ms of pre-buffer, so it trails the picture a little).
+/// Everything native is owned by one background thread.
 /// </summary>
-internal sealed unsafe class FFmpegVideoSource : IVideoSource
+internal sealed unsafe class FFmpegVideoSource : IVideoSource, IAudioSource
 {
+    private const string NoSpeakersMessage = "Máy không có loa hoặc tai nghe";
+    private const string AudioFormatMessage = "Tiếng của camera này chưa phát được";
+
     private static readonly TimeSpan ReadStall = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ControlTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(2);
@@ -51,7 +56,20 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private volatile bool _hasFrame;
     private TaskCompletionSource<FrameSnapshot>? _capture;
 
+    // Sound. _soundOn is the user's switch; _audioPlayable / _audioError are what the user is told.
+    private volatile bool _soundOn;
+    private volatile bool _audioPlayable;
+    private volatile string? _audioError;
+
     // Decoder thread only.
+    private int _audioIndex = -1;
+    private AVCodecContext* _adec;
+    private AVFrame* _aframe;
+    private IAudioSink? _sink;
+    private bool _soundApplied;           // the decoder thread's view of _soundOn
+    private bool _sinkFailed;             // the output could not be opened: stay silent until the switch is flipped again
+    private int _sinkRate, _sinkChannels;
+    private short[] _pcm = [];
     private AVFormatContext* _fmt;
     private AVCodecContext* _dec;
     private AVPacket* _pkt;
@@ -101,6 +119,21 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     public event Action<IVideoSource>? StateChanged;
     public VideoStats Stats { get { lock (_gate) return _stats; } }
     public TimeSpan Position => TimeSpan.FromTicks(Interlocked.Read(ref _positionTicks));
+
+    public bool HasAudio => _audioPlayable;
+    public string? AudioError => _audioError;
+    public event Action? AudioChanged;
+
+    public bool SoundOn
+    {
+        get => _soundOn;
+        set
+        {
+            if (_soundOn == value) return;
+            _soundOn = value;
+            _wake.SafeSet();
+        }
+    }
 
     /// <summary>Native bytes held by the BGRA buffers (tests, diagnostics).</summary>
     internal long FrameBufferBytes => _frames.AllocatedBytes;
@@ -187,6 +220,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             _frame = ffmpeg.av_frame_alloc();
             _swFrame = ffmpeg.av_frame_alloc();
             _held = ffmpeg.av_frame_alloc();
+            _aframe = ffmpeg.av_frame_alloc();
             SetState(VideoState.Connecting, null);
             int backoff = 0;
             while (!_stopping)
@@ -246,6 +280,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             Log.Warn($"Decoder open failed ({Log.Redact(_opt.Url)}): {FFmpegError.Describe(r)}");
             return new Outcome(End.Lost, Failure.Unsupported);
         }
+        OpenAudioDecoder();
         _firstMedia = long.MinValue;
         _rate.Reset();
         _decodeErrors = 0;
@@ -278,6 +313,12 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
                 }
                 Log.Warn($"Read failed ({Log.Redact(_opt.Url)}): {(_irq.TimedOut ? "no data for 10 s" : FFmpegError.Describe(r))}");
                 return new Outcome(End.Lost, _irq.TimedOut ? Failure.Network : FFmpegError.Classify(r), hadFrames);
+            }
+            // Sound goes first and never counts toward the keyframe wait below.
+            if (_audioIndex >= 0 && _pkt->stream_index == _audioIndex)
+            {
+                HandleAudioPacket();
+                continue;
             }
             if (_pkt->stream_index != _videoIndex)
             {
@@ -318,7 +359,8 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         {
             MediaUtil.Set(&o, "rtsp_transport", "tcp");
             MediaUtil.Set(&o, "timeout", "10000000");               // socket I/O, microseconds
-            MediaUtil.Set(&o, "allowed_media_types", "video");      // audio is not even set up
+            // Audio is not even set up unless this source was asked for it (grid tiles never are).
+            MediaUtil.Set(&o, "allowed_media_types", _opt.WithAudio ? "video+audio" : "video");
             MediaUtil.Set(&o, "max_delay", "500000");
         }
         if (_opt.IsLive && !_isFile)
@@ -348,9 +390,12 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         AVCodec* codec = null;
         int vi = ffmpeg.av_find_best_stream(_fmt, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
         if (vi < 0) return vi;
+        // The sound track, when asked for and the stream has one (a camera set to "Video" only has none).
+        int ai = _opt.WithAudio ? ffmpeg.av_find_best_stream(_fmt, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, vi, null, 0) : -1;
         for (int i = 0; i < _fmt->nb_streams; i++)
-            if (i != vi) _fmt->streams[i]->discard = AVDiscard.AVDISCARD_ALL;
+            if (i != vi && i != ai) _fmt->streams[i]->discard = AVDiscard.AVDISCARD_ALL;
         _videoIndex = vi;
+        _audioIndex = ai >= 0 ? ai : -1;
         _timeBase = _fmt->streams[vi]->time_base;
         return 0;
     }
@@ -468,6 +513,135 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
         return ok && !_stopping;
     }
 
+    // ------------------------------------------------------------------ sound
+
+    /// <summary>
+    /// Opens the decoder for the stream's sound track. Whatever goes wrong here only means "no sound": the picture is
+    /// never affected.
+    /// </summary>
+    private void OpenAudioDecoder()
+    {
+        FreeAudioDecoder();
+        if (_audioIndex < 0) { SetAudio(false, null); return; }
+        AVStream* st = _fmt->streams[_audioIndex];
+        AVCodecParameters* par = st->codecpar;
+        AVCodec* codec = ffmpeg.avcodec_find_decoder(par->codec_id);
+        if (codec == null)
+        {
+            Log.Info($"Sound track not played: no decoder for {MediaUtil.CodecLabel(par->codec_id)} ({Log.Redact(_opt.Url)})");
+            _audioIndex = -1;
+            SetAudio(false, AudioFormatMessage);
+            return;
+        }
+        _adec = ffmpeg.avcodec_alloc_context3(codec);
+        int r = _adec == null ? FFmpegError.ENoMem : ffmpeg.avcodec_parameters_to_context(_adec, par);
+        if (r >= 0)
+        {
+            _adec->pkt_timebase = st->time_base;
+            r = ffmpeg.avcodec_open2(_adec, codec, null);
+        }
+        if (r < 0 || !PcmConvert.IsSupported(_adec->sample_fmt))
+        {
+            Log.Info($"Sound track not played: {MediaUtil.CodecLabel(par->codec_id)} ({(r < 0 ? FFmpegError.Describe(r) : "sample format " + _adec->sample_fmt)})");
+            FreeAudioDecoder();
+            _audioIndex = -1;
+            SetAudio(false, AudioFormatMessage);
+            return;
+        }
+        Log.Info($"Sound track found: {MediaUtil.CodecLabel(par->codec_id)}, {par->sample_rate} Hz, {par->ch_layout.nb_channels} ch ({Log.Redact(_opt.Url)})");
+        SetAudio(true, null);
+    }
+
+    private void FreeAudioDecoder()
+    {
+        if (_adec == null) return;
+        var d = _adec;
+        ffmpeg.avcodec_free_context(&d);
+        _adec = null;
+    }
+
+    private void SetAudio(bool playable, string? error)
+    {
+        bool changed = _audioPlayable != playable || _audioError != error;
+        _audioPlayable = playable;
+        _audioError = error;
+        if (changed) RaiseAudioChanged();
+    }
+
+    private void RaiseAudioChanged()
+    {
+        if (_stopping) return;
+        try
+        {
+            AudioChanged?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("AudioChanged handler threw", ex);
+        }
+    }
+
+    /// <summary>Decoder thread: follows the user's sound switch (a stale decoder state or queue must not be played).</summary>
+    private void ApplySoundSwitch()
+    {
+        bool on = _soundOn;
+        if (on == _soundApplied) return;
+        _soundApplied = on;
+        _sinkFailed = false;
+        if (_adec != null) ffmpeg.avcodec_flush_buffers(_adec);
+        _sink?.Flush();
+        // The "no speakers" message belongs to the attempt that just ended; the next one tells its own story.
+        if (_audioError == NoSpeakersMessage) SetAudio(_audioPlayable, null);
+    }
+
+    /// <summary>Always consumes the packet. Off, or no output: dropped without decoding.</summary>
+    private void HandleAudioPacket()
+    {
+        try
+        {
+            if (!_soundOn || _adec == null || _sinkFailed) return;
+            int r = ffmpeg.avcodec_send_packet(_adec, _pkt);
+            if (r < 0 && r != FFmpegError.EAgain) return;
+            while (ffmpeg.avcodec_receive_frame(_adec, _aframe) >= 0)
+            {
+                try { PlayAudioFrame(_aframe); }
+                finally { ffmpeg.av_frame_unref(_aframe); }
+            }
+        }
+        finally
+        {
+            ffmpeg.av_packet_unref(_pkt);
+        }
+    }
+
+    private void PlayAudioFrame(AVFrame* f)
+    {
+        int channels = f->ch_layout.nb_channels, rate = f->sample_rate, n = f->nb_samples;
+        if (channels <= 0 || rate <= 0 || n <= 0) return;
+        int outChannels = PcmConvert.OutputChannels(channels);
+        // Grows once or twice at the start, never per frame.
+        if (_pcm.Length < n * outChannels) _pcm = new short[n * outChannels * 2];
+        if (!PcmConvert.ToS16((AVSampleFormat)f->format, f->extended_data, channels, n, _pcm))
+        {
+            _sinkFailed = true;
+            SetAudio(false, AudioFormatMessage);
+            return;
+        }
+        if (_sink == null || rate != _sinkRate || outChannels != _sinkChannels)
+        {
+            _sink ??= _factory.CreateAudioSink();
+            if (!_sink.Start(rate, outChannels))
+            {
+                _sinkFailed = true;
+                SetAudio(_audioPlayable, _sink.Error ?? NoSpeakersMessage);
+                return;
+            }
+            _sinkRate = rate;
+            _sinkChannels = outChannels;
+        }
+        _sink.Write(_pcm.AsSpan(0, n * outChannels));
+    }
+
     /// <summary>1 shown, 0 skipped, -1 stop.</summary>
     private int Present(AVFrame* frame)
     {
@@ -572,6 +746,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     /// <summary>Recorded playback: RTSP PAUSE, frozen clock, then PLAY. False = stop.</summary>
     private bool PauseLoop()
     {
+        _sink?.Flush(); // sound stops with the picture; the pre-buffer is rebuilt on resume
         if (_isRtsp && _fmt != null)
         {
             _irq.SetDeadline(ControlTimeout);
@@ -625,6 +800,7 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     /// <summary>Pending capture; re-scale of the shown picture when the box changed while nothing is decoding.</summary>
     private void Service()
     {
+        ApplySoundSwitch();
         if (Volatile.Read(ref _capture) != null)
         {
             TaskCompletionSource<FrameSnapshot>? cap;
@@ -773,6 +949,8 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
     private void CloseInput()
     {
         FreeDecoder();
+        FreeAudioDecoder();
+        _sink?.Flush();
         if (_fmt != null)
         {
             // RTSP sends TEARDOWN here; bounded so a dead link cannot hold the thread.
@@ -793,6 +971,9 @@ internal sealed unsafe class FFmpegVideoSource : IVideoSource
             var f1 = _frame; ffmpeg.av_frame_free(&f1); _frame = null;
             var f2 = _swFrame; ffmpeg.av_frame_free(&f2); _swFrame = null;
             var f3 = _held; ffmpeg.av_frame_free(&f3); _held = null;
+            var f4 = _aframe; ffmpeg.av_frame_free(&f4); _aframe = null;
+            try { _sink?.Dispose(); } catch (Exception ex) { Log.Warn("Sound output close failed", ex); }
+            _sink = null;
             _last = null;
             if (_sws != null) { ffmpeg.sws_freeContext(_sws); _sws = null; }
         }

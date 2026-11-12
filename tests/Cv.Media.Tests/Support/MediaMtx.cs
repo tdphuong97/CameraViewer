@@ -79,6 +79,15 @@ public sealed class MediaMtx : IDisposable
         _publishers[path] = p;
     }
 
+    /// <summary>Like Publish, plus a 500 Hz tone as G.711 mu-law (RTP PCMU, 8 kHz mono): what an IP camera with its microphone on sends.</summary>
+    public void PublishWithSound(string path, string clip)
+    {
+        StopPublisher(path);
+        var p = Start(TestEnv.GplFFmpegExe,
+            $"-hide_banner -loglevel error -re -stream_loop -1 -i \"{clip}\" -f lavfi -i sine=frequency=500:sample_rate=8000 -map 0:v -map 1:a -c:v copy -c:a pcm_mulaw -ar 8000 -ac 1 -f rtsp -rtsp_transport tcp rtsp://{PubUser}:{PubPassword}@127.0.0.1:{Port}/{path}");
+        _publishers[path] = p;
+    }
+
     [System.Runtime.InteropServices.DllImport("ntdll.dll")]
     private static extern int NtSuspendProcess(IntPtr process);
 

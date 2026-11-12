@@ -5,6 +5,15 @@ description: Những gì thay đổi ở từng phiên bản Camera Viewer.
 # Nhật ký thay đổi
 
 {% updates format="full" %}
+{% update date="2026-11-12" %}
+## Phiên bản 0.9.6
+
+* Mới: **nghe tiếng** của camera. Màn xem lớn một camera và màn Xem lại có nút **Bật tiếng**, tắt sẵn mỗi lần mở phần mềm. Lưới nhiều ô không có tiếng để máy nhẹ. Camera không gửi tiếng thì nút xám và ghi **Không có tiếng**.
+* Mới: **Bố cục** thêm lưới 6, 8, 12 ô và ba kiểu một ô lớn kèm các ô nhỏ (1+5, 1+7, 1+12).
+* Mới: nút **Camera** mở danh sách camera để kéo vào ô; nút **Ẩn** trên ô để bỏ camera không cần xem khỏi Trực tiếp.
+* Mới: **Bộ** sắp xếp có tên (bố cục, thứ tự, camera ẩn), chuyển nhanh ở thanh dưới.
+* Hướng dẫn: cập nhật các trang [Xem tất cả camera](../xem-camera/xem-tat-ca-camera.md), [Xem lớn một camera](../xem-camera/xem-lon-mot-camera.md), [Xem lại một camera](../xem-lai/xem-lai-camera.md) và [Xử lý sự cố](xu-ly-su-co.md).
+{% endupdate %}
 {% update date="2026-11-08" %}
 ## Phiên bản 0.9.5
 

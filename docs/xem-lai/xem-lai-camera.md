@@ -44,6 +44,12 @@ Thanh thời gian (6) hiện cả ngày từ 00:00 đến 24:00. **Vạch xanh l
 Nút xanh **Trích xuất video** (8) lấy một đoạn đang xem ra file MP4: xem [Trích xuất video](luu-doan-video.md). Nút **Có người** (9) liệt kê những lúc camera thấy có người, kèm ảnh: xem [Tìm lúc có người](tim-nguoi.md).
 {% endhint %}
 
+## Nghe tiếng khi xem lại
+
+Nút **Bật tiếng** nằm cạnh nút **Chụp ảnh**. Bấm vào để nghe tiếng của đoạn ghi, bấm **Tắt tiếng** để im lại. Tiếng bật ở màn Trực tiếp thì ở đây cũng đang bật. Tạm dừng thì tiếng dừng theo hình; tiếng chậm hơn hình khoảng một phần mười giây.
+
+Nút xám ghi **Không có tiếng** nghĩa là đoạn ghi này không có tiếng. Thường do lúc ghi, camera hoặc đầu ghi chưa bật thu tiếng, nên bật xong mới có tiếng ở các đoạn ghi sau đó. Xem [Xử lý sự cố](../tham-khao/xu-ly-su-co.md).
+
 ## Phần mềm báo gì khi xem lại
 
 | Thông báo | Nghĩa là |

@@ -14,6 +14,14 @@ public sealed unsafe class FFmpegVideoSourceFactory : IVideoSourceFactory, IDisp
     private int _hwUsers;
     private bool _disposed;
 
+    /// <summary>
+    /// Makes the sound output of one source (one per source that plays sound). Replaceable so tests and the demo
+    /// self-test stay silent on the machine they run on.
+    /// </summary>
+    public Func<IAudioSink> AudioSinkFactory { get; set; } = static () => new WaveOutSink();
+
+    internal IAudioSink CreateAudioSink() => AudioSinkFactory();
+
     public IVideoSource Create(VideoSourceOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

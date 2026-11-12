@@ -48,6 +48,12 @@ public partial class CameraTile : UserControl
     public event Action<CameraTile>? SnapshotRequested;
     public event Action<int, int>? SwapRequested;
 
+    /// <summary>The user hid this camera (the live grid drops it; Xem lại still lists it).</summary>
+    public event Action<CameraTile>? HideRequested;
+
+    /// <summary>A camera from the camera panel was dropped here: (slot of this tile, channel number).</summary>
+    public event Action<int, int>? CameraDropped;
+
     /// <summary>Shows a camera (or an empty slot). Keeps the open source when nothing changed.</summary>
     public void Bind(ChannelInfo? camera, StreamKind kind)
     {
@@ -69,8 +75,10 @@ public partial class CameraTile : UserControl
         if (Source is not null || Camera is not { Online: true } cam || s.Nvr is null) return;
         try
         {
-            var src = s.CreateSource(s.Nvr.LiveUrl(cam.No, Kind), live: true, Video.TargetPixels());
+            // Only the big single view takes the camera's sound; grid tiles (the big one of 1+5 too) never do.
+            var src = s.CreateSource(s.Nvr.LiveUrl(cam.No, Kind), live: true, Video.TargetPixels(), withAudio: IsSingle);
             src.StateChanged += OnSourceState;
+            if (src is IAudioSource audio) audio.AudioChanged += OnAudioChanged;
             Source = src;
             Video.Source = src;
             src.Start();
@@ -93,6 +101,7 @@ public partial class CameraTile : UserControl
         if (src is not null)
         {
             src.StateChanged -= OnSourceState;
+            if (src is IAudioSource audio) audio.AudioChanged -= OnAudioChanged;
             Video.Source = null;
             Source = null;
             try { src.Dispose(); } catch (Exception ex) { Log.Warn("Live source dispose failed", ex); }
@@ -104,8 +113,19 @@ public partial class CameraTile : UserControl
     void OnSourceState(IVideoSource src) =>
         Dispatcher.BeginInvoke(() =>
         {
-            if (ReferenceEquals(src, Source)) UpdateOverlay();
+            if (!ReferenceEquals(src, Source)) return;
+            UpdateOverlay();
+            SourceChanged?.Invoke();
         });
+
+    void OnAudioChanged() =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (Source is IAudioSource) SourceChanged?.Invoke();
+        });
+
+    /// <summary>The source's state or its sound changed (UI thread): the single view refreshes its sound button.</summary>
+    public event Action? SourceChanged;
 
     void UpdateOverlay()
     {
@@ -160,6 +180,7 @@ public partial class CameraTile : UserControl
     void OnPlayback(object sender, RoutedEventArgs e) => PlaybackRequested?.Invoke(this);
     void OnSnapshot(object sender, RoutedEventArgs e) => SnapshotRequested?.Invoke(this);
     void OnZoom(object sender, RoutedEventArgs e) => Clicked?.Invoke(this);
+    void OnHide(object sender, RoutedEventArgs e) => HideRequested?.Invoke(this);
 
     // ---- Click and drag to swap ----
 
@@ -190,9 +211,21 @@ public partial class CameraTile : UserControl
         Clicked?.Invoke(this);
     }
 
+    /// <summary>
+    /// Another tile (swap places; only onto a tile with a camera) or a camera from the camera panel (onto any tile,
+    /// empty ones too, but not onto the camera it already is).
+    /// </summary>
+    bool Accepts(IDataObject data)
+    {
+        if (IsSingle) return false;
+        if (data.GetDataPresent(DragFormat)) return Camera is not null && (int)data.GetData(DragFormat)! != Slot;
+        if (data.GetDataPresent(CameraDrawer.DragFormat)) return (int)data.GetData(CameraDrawer.DragFormat)! != Camera?.No;
+        return false;
+    }
+
     void OnDragOver(object sender, DragEventArgs e)
     {
-        var ok = !IsSingle && Camera is not null && e.Data.GetDataPresent(DragFormat) && (int)e.Data.GetData(DragFormat) != Slot;
+        var ok = Accepts(e.Data);
         e.Effects = ok ? DragDropEffects.Move : DragDropEffects.None;
         DropHighlight.Visibility = ok ? Visibility.Visible : Visibility.Collapsed;
         e.Handled = true;
@@ -201,8 +234,8 @@ public partial class CameraTile : UserControl
     void OnDrop(object sender, DragEventArgs e)
     {
         DropHighlight.Visibility = Visibility.Collapsed;
-        if (IsSingle || !e.Data.GetDataPresent(DragFormat)) return;
-        var from = (int)e.Data.GetData(DragFormat);
-        if (from != Slot) SwapRequested?.Invoke(from, Slot);
+        if (!Accepts(e.Data)) return;
+        if (e.Data.GetDataPresent(DragFormat)) SwapRequested?.Invoke((int)e.Data.GetData(DragFormat)!, Slot);
+        else CameraDropped?.Invoke(Slot, (int)e.Data.GetData(CameraDrawer.DragFormat)!);
     }
 }

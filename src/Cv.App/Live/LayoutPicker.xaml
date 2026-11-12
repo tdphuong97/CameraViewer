@@ -1,0 +1,52 @@
+<UserControl x:Class="Cv.App.Live.LayoutPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- One choice in the popup: quiet until hovered. The current one gets its accent colours from code, and a
+             local value beats this hover trigger, so it stays accent. MinHeight 0 because the theme's Button sets 36. -->
+        <Style x:Key="LayoutTile" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Width" Value="72" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="4,7" />
+            <Setter Property="Margin" Value="2" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource RaisedHoverBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PickerHeader" TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Button x:Name="Main" Height="32" MinHeight="32" Padding="8,0,10,0" Click="OnMainClick" ToolTip="Bố cục">
+            <StackPanel Orientation="Horizontal">
+                <Border x:Name="MainThumb" Width="44" Height="28" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock x:Name="MainText" FontSize="13.5" VerticalAlignment="Center" />
+                <TextBlock Text="&#xE70D;" Style="{StaticResource Icon}" FontSize="11" Margin="10,1,0,0"
+                           Foreground="{StaticResource MutedBrush}" />
+            </StackPanel>
+        </Button>
+
+        <!-- Opens above the button (the bar is at the bottom of the window). The card's margin leaves room for the
+             shadow, which the transparent popup window would otherwise clip. -->
+        <Popup x:Name="Pop" PlacementTarget="{Binding ElementName=Main}" Placement="Top" VerticalOffset="-8"
+               StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Margin="12,12,12,10" Width="340" Padding="12" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.55" Color="Black" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="CHIA ĐỀU" Style="{StaticResource PickerHeader}" Margin="4,0,0,6" />
+                    <WrapPanel x:Name="EqualTiles" />
+                    <TextBlock Text="KHUNG LỚN + KHUNG NHỎ" Style="{StaticResource PickerHeader}" Margin="4,12,0,6" />
+                    <WrapPanel x:Name="BigTiles" />
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

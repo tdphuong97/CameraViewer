@@ -1,10 +1,12 @@
 using System.IO;
 using System.Windows;
 using Cv.App.Help;
+using Cv.App.Logic;
 using Cv.App.Playback;
 using Cv.App.Video;
 using Cv.Core;
 using Cv.Core.Export;
+using Cv.Core.Video;
 
 namespace Cv.App.Demo;
 
@@ -60,6 +62,11 @@ internal static class DemoSelfTest
             await Wait(1);
             Check(FramePump.Count == online, $"after swaps: {FramePump.Count} sources");
 
+            await LiveArrangementsAsync(w, live, Check);
+            Check(FramePump.Count == online, $"back to automatic with nothing hidden: {FramePump.Count} sources");
+
+            var sounds = await SoundAsync(w, live, Check);
+
             var snapDir = Path.Combine(AppPaths.Data, "selftest-snapshots");
             s.Settings.SnapshotFolder = snapDir;
             if (Directory.Exists(snapDir)) Directory.Delete(snapDir, true);
@@ -83,6 +90,12 @@ internal static class DemoSelfTest
             await Wait(2);
             var p2 = ctrl.Position;
             Check(p2 - p1 > TimeSpan.FromSeconds(1.5) && Math.Abs((p1 - start).TotalSeconds) < 5, $"position runs: {p1:HH:mm:ss} → {p2:HH:mm:ss}");
+
+            // Sound in Xem lại: the speaker button follows the shared switch (left on by the single-view checks).
+            Check(pb.TestSoundEnabled && pb.TestSoundText == "Tắt tiếng", $"playback: speaker button \"{pb.TestSoundText}\" (switch carried over from single view)");
+            Check(sounds.Sinks.Count > 0 && sounds.Sinks[^1].Samples > 0 && !sounds.Sinks[^1].Disposed, "playback: sound reaches the (silent) output");
+            pb.TestToggleSound();
+            Check(pb.TestSoundText == "Bật tiếng" && !s.SoundOn, "playback: speaker button switches the sound off");
 
             pb.TestTogglePause();
             await Wait(0.3);
@@ -208,6 +221,182 @@ internal static class DemoSelfTest
         Log.Info($"SELFTEST DONE failures={fails}");
         w.Close();
         Application.Current.Shutdown(fails);
+    }
+
+    /// <summary>
+    /// Layouts (also the big-tile ones), hiding, the camera panel (drag from the list, across pages, onto a hidden one) and the
+    /// Bộ menu, driven through the same entry points the clicks use. Leaves the default arrangement as it found it.
+    /// </summary>
+    static async Task LiveArrangementsAsync(MainWindow w, Live.LiveView live, Action<bool, string> check)
+    {
+        static Task Wait(double s) => Task.Delay(TimeSpan.FromSeconds(s));
+        var s = w.Services;
+        var total = live.TestAll.Count;
+        int OnlineOnPage1() => live.TestOrder.Take(live.TestTileCount).Count(c => c.Online);
+
+        // Layouts: the picker's codes, the big tile, and automatic that does not change.
+        live.TestLayoutPicker.TestChoose(105);
+        await Wait(1);
+        check(live.TestTileCount == 6 && s.Settings.LiveGrid == 105 && FramePump.Count == OnlineOnPage1(),
+            $"layout 1+5: {live.TestTileCount} tiles, {FramePump.Count} sources, saved {s.Settings.LiveGrid}");
+        foreach (var (code, tiles) in new[] { (107, 8), (112, 13), (8, 8), (12, 12), (6, 6), (9, 9) })
+        {
+            live.TestLayout(code);
+            check(live.TestTileCount == tiles, $"layout {code}: {live.TestTileCount} tiles (want {tiles})");
+        }
+        live.TestLayout(0);
+        await Wait(0.5);
+        check(live.TestTileCount == GridLayout.AutoSize(total), $"automatic: {live.TestTileCount} tiles for {total} cameras");
+
+        // Hide: the camera leaves the grid and the count, stays in the list, and is saved.
+        var hiddenCam = live.TestOrder[1];
+        live.TestHide(1);
+        await Wait(0.5);
+        check(live.TestHiddenCount == 1 && live.TestOrder.All(c => c.No != hiddenCam.No) && live.TestAll.Count == total
+              && s.Settings.LiveHidden.Count == 1, $"hide: {live.TestOrder.Count} shown, {live.TestHiddenCount} hidden, saved {s.Settings.LiveHidden.Count}");
+        check(FramePump.Count == live.TestOrder.Take(live.TestTileCount).Count(c => c.Online), $"hide: sources match the tiles ({FramePump.Count})");
+
+        // Camera panel: lists every camera, a hidden one dragged onto a tile shows and the camera it replaces moves to the end.
+        live.TestSetDrawer(true);
+        await Wait(0.5);
+        check(live.TestDrawer.TestRows == total, $"camera panel: {live.TestDrawer.TestRows} rows");
+        var replaced = live.TestOrder[2].No;
+        live.TestDrop(2, hiddenCam.No);
+        await Wait(0.5);
+        check(live.TestOrder[2].No == hiddenCam.No && live.TestHiddenCount == 0 && live.TestOrder[^1].No == replaced && s.Settings.LiveHidden.Count == 0,
+            $"drop a hidden camera on tile 3: shown, the replaced camera ({replaced}) is last");
+
+        // Across pages: with 4 tiles the camera on page 2 goes onto tile 1 and swaps with its camera.
+        live.TestLayout(4);
+        await Wait(0.5);
+        var far = live.TestOrder[5].No;
+        var near = live.TestOrder[0].No;
+        live.TestDrop(0, far);
+        await Wait(0.5);
+        check(live.TestOrder[0].No == far && live.TestOrder[5].No == near, "drop a camera from page 2: swapped with tile 1");
+        live.TestDrop(0, far); // onto itself: nothing
+        check(live.TestOrder[0].No == far, "drop onto the same camera: nothing changes");
+        live.TestLayout(0);
+
+        // The panel's Hiện lại button.
+        live.TestHide(0);
+        var gone = live.TestAll.First(c => !live.TestOrder.Contains(c)).No;
+        live.TestDrawer.TestUnhide(gone);
+        await Wait(0.5);
+        check(live.TestHiddenCount == 0, "Hiện lại in the panel brings the camera back");
+
+        // Bộ: a new one starts as a copy, edits stay inside it, switching restores each, delete goes back to the default.
+        var menu = live.TestPresets;
+        var defaultGrid = s.Settings.LiveGrid;
+        check(menu.TestAdd("") != "", "Bộ: an empty name is refused");
+        check(menu.TestAdd("Trực đêm") == "" && s.Settings.LivePreset == "Trực đêm" && s.Settings.LivePresets.Count == 1, "Bộ: \"Trực đêm\" added and in use");
+        check(menu.TestAdd("trực đêm") != "", "Bộ: the same name in another case is refused");
+        live.TestLayout(105);
+        live.TestHide(0);
+        live.TestHide(0);
+        await Wait(0.5);
+        check(s.Settings.LiveGrid == defaultGrid && s.Settings.LiveHidden.Count == 0 && s.Settings.LivePresets[0].Grid == 105 && s.Settings.LivePresets[0].Hidden.Count == 2,
+            "Bộ: edits went into \"Trực đêm\", the default is untouched");
+        menu.TestSwitch(LiveArrangements.DefaultName);
+        await Wait(0.5);
+        check(live.TestLayoutSetting == defaultGrid && live.TestHiddenCount == 0, $"Bộ: back to Mặc định (layout {live.TestLayoutSetting}, {live.TestHiddenCount} hidden)");
+        menu.TestSwitch("Trực đêm");
+        await Wait(0.5);
+        check(live.TestLayoutSetting == 105 && live.TestHiddenCount == 2 && live.TestTileCount == 6, $"Bộ: \"Trực đêm\" again (layout {live.TestLayoutSetting}, {live.TestHiddenCount} hidden)");
+
+        // Everything hidden: a message, the bottom bar stays so another Bộ can be picked.
+        while (live.TestOrder.Count > 0) live.TestHide(0);
+        await Wait(0.5);
+        check(live.TestAllHiddenMessage && FramePump.Count == 0, $"every camera hidden: message shown, {FramePump.Count} sources");
+        menu.TestDeleteActive();
+        await Wait(1);
+        check(s.Settings.LivePresets.Count == 0 && s.Settings.LivePreset == "" && !live.TestAllHiddenMessage && live.TestOrder.Count == total,
+            "Bộ deleted: back to Mặc định with every camera");
+
+        live.TestSetDrawer(false);
+        live.TestLayout(defaultGrid);
+        await Wait(1);
+    }
+
+    /// <summary>Output counters of the silent demo sound outputs, and the demo factory (to read which sources asked for sound).</summary>
+    sealed record SoundRig(DemoVideoSourceFactory Factory, List<DemoSilentSink> Sinks);
+
+    /// <summary>
+    /// Sound in single view: the grid never asks for it; the speaker button is off until pressed, greyed for a camera with
+    /// no sound track, tells when there are no speakers; the output stops when switched off. Leaves the switch ON so the
+    /// Xem lại checks can see it carried over. Every output is silent.
+    /// </summary>
+    static async Task<SoundRig> SoundAsync(MainWindow w, Live.LiveView live, Action<bool, string> check)
+    {
+        static Task Wait(double s) => Task.Delay(TimeSpan.FromSeconds(s));
+        var s = w.Services;
+        var factory = (DemoVideoSourceFactory)s.Video;
+        var sinks = new List<DemoSilentSink>();
+        var failing = false;
+        factory.AudioSinkFactory = () =>
+        {
+            var sink = new DemoSilentSink { Fail = failing };
+            lock (sinks) sinks.Add(sink);
+            return sink;
+        };
+        var rig = new SoundRig(factory, sinks);
+        int WithAudio() { lock (factory.Created) return factory.Created.Count(c => c.WithAudio); }
+        int GridWithAudio() { lock (factory.Created) return factory.Created.Count(c => c.WithAudio && c.Live && !c.Main); }
+        s.SoundOn = false;
+
+        // Earlier steps already opened single view (asks for sound, plays none while off); count from here.
+        var before = WithAudio();
+        int total;
+        lock (factory.Created) total = factory.Created.Count;
+        check(GridWithAudio() == 0, $"sound: the grid never asks for it ({total} sources created so far, {GridWithAudio()} grid tiles with sound)");
+
+        live.TestEnterSingle(0);
+        await Wait(1.5);
+        check(WithAudio() == before + 1 && live.TestSoundEnabled && live.TestSoundText == "Bật tiếng", $"sound: single view asks for it, button \"{live.TestSoundText}\", off by default");
+        check(sinks.Count == 0, "sound: nothing is opened while it is off");
+
+        live.TestToggleSound();
+        await Wait(1.2);
+        check(live.TestSoundText == "Tắt tiếng" && s.SoundOn && sinks.Count == 1 && sinks[0].Samples > 2000, $"sound: switched on, {sinks.Count} output, {(sinks.Count > 0 ? sinks[0].Samples : 0)} samples");
+        live.TestToggleSound();
+        await Wait(0.4);
+        var after = sinks[0].Samples;
+        await Wait(0.6);
+        check(live.TestSoundText == "Bật tiếng" && !s.SoundOn && sinks[0].Flushes >= 1 && sinks[0].Samples == after, "sound: switched off, output flushed and silent");
+
+        // A camera with no sound track: greyed, with the plain message.
+        live.HandleEscape();
+        await Wait(1.2);
+        var silent = live.TestOrder.ToList().FindIndex(c => c.No == DemoData.SilentChannel);
+        live.TestEnterSingle(silent);
+        await Wait(1.5);
+        check(!live.TestSoundEnabled && live.TestSoundText == "Không có tiếng", $"sound: camera without a sound track: \"{live.TestSoundText}\", greyed");
+        live.HandleEscape();
+        await Wait(1.2);
+
+        // No speakers: the picture goes on, the button tells why.
+        failing = true;
+        live.TestEnterSingle(0);
+        await Wait(1.5);
+        live.TestToggleSound();
+        await Wait(1);
+        var src = live.TestSingleSource as IAudioSource;
+        check(src?.AudioError == "Máy không có loa hoặc tai nghe" && live.TestSoundEnabled && live.TestSingleHasFrame, $"sound: no speakers reported (\"{src?.AudioError}\"), picture still running");
+        live.TestToggleSound(); // off: the message belongs to that attempt
+        await Wait(0.8);
+        check(src?.AudioError is null, "sound: the message clears when switched off");
+        failing = false;
+        live.TestToggleSound(); // on again, with a working output
+        await Wait(1.2);
+        check(live.TestSoundText == "Tắt tiếng" && sinks[^1].Samples > 0 && !sinks[^1].Fail, "sound: back on with a working output");
+        live.HandleEscape();
+        await Wait(1.5);
+        await Wait(0.3);
+        check(sinks.Count(x => !x.Disposed) == 0, $"sound: leaving single view closed every output ({sinks.Count} opened in all)");
+
+        // The rule: only single view (live, main stream) and playback (recorded) ever take sound; no grid tile does.
+        check(GridWithAudio() == 0 && WithAudio() >= before + 3, $"sound: {WithAudio()} sources with sound, none of them a grid tile");
+        return rig;
     }
 
     /// <summary>F1 opens the guide in its own window on the page about the screen in use; one window is reused; closing

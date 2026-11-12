@@ -34,6 +34,8 @@
                     Click="OnSnapshot" />
             <Button x:Name="ZoomButton" Style="{StaticResource OverlayButton}" app:Ui.Glyph="&#xE740;" ToolTip="Phóng to"
                     Click="OnZoom" />
+            <Button x:Name="HideButton" Style="{StaticResource OverlayButton}" app:Ui.Glyph="&#xED1A;" ToolTip="Ẩn camera này khỏi Trực tiếp"
+                    Click="OnHide" />
         </StackPanel>
 
         <Border x:Name="DropHighlight" BorderBrush="{StaticResource AccentBrush}" BorderThickness="3" Visibility="Collapsed" />

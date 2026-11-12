@@ -21,6 +21,7 @@ public sealed class PlaybackController
     readonly DispatcherTimer _jumpTimer;
     readonly DispatcherTimer _endTimer;
     IVideoSource? _source;
+    Action? _audioHandler;
     DateTime _openAt;
     TimeRange? _span;
     TimeRange _pendingSpan;
@@ -151,8 +152,14 @@ public sealed class PlaybackController
         {
             var nvr = _s.Nvr ?? throw new NvrException("Chưa cài đặt đầu ghi.");
             var url = nvr.PlaybackUrl(Camera!.No, t, span.End, StreamKind.Main);
-            var src = _s.CreateSource(url, live: false, _view.TargetPixels());
+            var src = _s.CreateSource(url, live: false, _view.TargetPixels(), withAudio: true);
             src.StateChanged += OnSourceState;
+            if (src is IAudioSource audio)
+            {
+                // The speaker button follows what the stream carries (sound track found, no speakers...).
+                _audioHandler = () => _ui.BeginInvoke(() => { if (ReferenceEquals(src, _source)) Raise(); });
+                audio.AudioChanged += _audioHandler;
+            }
             _source = src;
             _view.Source = src;
             src.Start();
@@ -302,6 +309,8 @@ public sealed class PlaybackController
         var s = _source;
         if (s is null) return;
         s.StateChanged -= OnSourceState;
+        if (s is IAudioSource audio && _audioHandler is not null) audio.AudioChanged -= _audioHandler;
+        _audioHandler = null;
         _view.Source = null;
         _source = null;
         if (!keepPicture) _view.ClearPicture();

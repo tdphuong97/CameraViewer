@@ -27,6 +27,12 @@ public sealed record VideoSourceOptions
 
     /// <summary>Live only: on loss, retry with backoff (1, 2, 5, 10 s ...) until disposed. State = Reconnecting meanwhile.</summary>
     public bool Reconnect { get; init; } = true;
+
+    /// <summary>
+    /// Also take the recorder's sound track (single view and playback only; grid tiles never ask, so they stay light).
+    /// Nothing is decoded or played until <see cref="IAudioSource.SoundOn"/> is set.
+    /// </summary>
+    public bool WithAudio { get; init; }
 }
 
 public readonly record struct VideoStats(string Codec, int Width, int Height, double Fps, double Kbps, bool HardwareDecoding);
@@ -75,6 +81,28 @@ public interface IVideoSource : IDisposable
 
     /// <summary>The current frame at full source resolution, BGRA, for a snapshot. Faults if no frame was decoded yet.</summary>
     Task<FrameSnapshot> CaptureAsync(CancellationToken ct);
+}
+
+/// <summary>
+/// Optional second face of a source opened with <see cref="VideoSourceOptions.WithAudio"/>: ask with
+/// <c>source as IAudioSource</c>. Sound plays through the default Windows output and follows the system volume.
+/// </summary>
+public interface IAudioSource
+{
+    /// <summary>True once the stream is open and carries a sound track this app can play. Can change after a reconnect.</summary>
+    bool HasAudio { get; }
+
+    /// <summary>Off by default. Setting it before the stream is open takes effect when it opens.</summary>
+    bool SoundOn { get; set; }
+
+    /// <summary>
+    /// Vietnamese message when sound cannot play although it was asked for (no speakers, a sound format this app cannot
+    /// play); null otherwise.
+    /// </summary>
+    string? AudioError { get; }
+
+    /// <summary>Raised on a background thread when HasAudio or AudioError changed.</summary>
+    event Action? AudioChanged;
 }
 
 public interface IVideoSourceFactory

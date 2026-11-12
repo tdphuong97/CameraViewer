@@ -7,6 +7,15 @@ namespace Cv.Core.Settings;
 /// <summary>A camera on a recorder.</summary>
 public sealed record CameraRef(string NvrId, int Channel);
 
+/// <summary>A named live arrangement: layout code (see AppSettings.LiveGrid), camera order and hidden cameras.</summary>
+public sealed class LiveArrangement
+{
+    public string Name { get; set; } = "";
+    public int Grid { get; set; }
+    public List<CameraRef> Order { get; set; } = [];
+    public List<CameraRef> Hidden { get; set; } = [];
+}
+
 /// <summary>Everything the app remembers. Stored as JSON (System.Text.Json, camelCase, indented) in AppPaths.SettingsFile.</summary>
 public sealed class AppSettings
 {
@@ -26,11 +35,26 @@ public sealed class AppSettings
 
     public bool CheckUpdates { get; set; } = true;
 
-    /// <summary>Live grid size: 1, 4, 6, 9, 16, 20 or 25 tiles; 0 = automatic (smallest that fits every camera, max 25).</summary>
+    /// <summary>Name of the arrangement kept in LiveGrid / LiveOrder / LiveHidden (always present, cannot be renamed or deleted).</summary>
+    public const string DefaultArrangementName = "Mặc định";
+
+    /// <summary>
+    /// Live layout code: 0 = automatic (smallest grid that fits every camera, max 25); 1, 4, 6, 8, 9, 12, 16, 20 or 25 =
+    /// that many equal tiles; 105, 107 or 112 = one big tile plus 5, 7 or 12 small ones. Unknown codes count as automatic.
+    /// </summary>
     public int LiveGrid { get; set; }
 
     /// <summary>Camera order in the live grid. Empty = by channel number. Unknown cameras are skipped, new ones appended.</summary>
     public List<CameraRef> LiveOrder { get; set; } = [];
+
+    /// <summary>Cameras left out of the live grid (they stay available in Xem lại).</summary>
+    public List<CameraRef> LiveHidden { get; set; } = [];
+
+    /// <summary>Extra named arrangements ("Bộ"); the default one is LiveGrid / LiveOrder / LiveHidden above.</summary>
+    public List<LiveArrangement> LivePresets { get; set; } = [];
+
+    /// <summary>Name of the arrangement in use; empty (or a name that no longer exists) = the default one.</summary>
+    public string LivePreset { get; set; } = "";
 
     /// <summary>Main window bounds and state, restored on start; null = centered default.</summary>
     public WindowBounds? Window { get; set; }

@@ -17,6 +17,15 @@ description: Xem một camera toàn màn hình với chất lượng cao, rồi 
 | 2 | **Xem lại** | Xem lại ghi hình của camera này, bắt đầu từ 5 phút trước. Xem [Xem lại một camera](../xem-lai/xem-lai-camera.md). |
 | 3 | **Chụp ảnh** | Lưu ảnh hình đang thấy. Xem [Chụp ảnh](chup-anh.md). |
 
+## Nghe tiếng của camera
+
+Camera có thu tiếng thì ở góc trên bên phải có nút **Bật tiếng**. Bấm vào là nghe tiếng qua loa hoặc tai nghe của máy, bấm **Tắt tiếng** để im lại. Âm lượng chỉnh bằng âm lượng của Windows.
+
+- Tiếng luôn **tắt** mỗi lần mở phần mềm. Đã bật thì giữ nguyên khi đổi sang camera khác và khi sang màn **Xem lại**, cho tới khi bạn tắt hoặc đóng phần mềm.
+- Tiếng có thể chậm hơn hình khoảng một phần mười giây. Bình thường.
+- Lưới nhiều ô không bao giờ có tiếng, để máy chạy nhẹ. Muốn nghe thì xem lớn camera đó.
+- Nút chuyển xám và ghi **Không có tiếng** nghĩa là camera này không gửi tiếng. Xem [Xử lý sự cố](../tham-khao/xu-ly-su-co.md).
+
 {% hint style="info" %}
 Hình có thể mất 1–2 giây để chuyển sang chất lượng cao. Camera nhiều điểm ảnh làm máy chạy nặng hơn lưới một chút; quay lại lưới khi xem xong.
 {% endhint %}

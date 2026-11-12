@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Cv.Core.Video;
+using Cv.Media;
 
 namespace Cv.App.Demo;
 
@@ -14,6 +15,12 @@ internal sealed class DemoVideoSourceFactory : IVideoSourceFactory, IDisposable
     readonly Dictionary<string, TextMask[]> _names = [];
     TextMask[][]? _clock;
     readonly DemoFrameClock _clockThread = new();
+
+    /// <summary>Sound output of the demo sources' beeps. The self-test swaps it for a silent counter.</summary>
+    public Func<IAudioSink> AudioSinkFactory { get; set; } = static () => new WaveOutSink();
+
+    /// <summary>Options of every source created (the self-test checks that only single view and playback ask for sound).</summary>
+    public List<(int Channel, bool Live, bool Main, bool WithAudio)> Created { get; } = [];
 
     public IVideoSource Create(VideoSourceOptions options)
     {
@@ -30,7 +37,8 @@ internal sealed class DemoVideoSourceFactory : IVideoSourceFactory, IDisposable
             to = DateTime.ParseExact(q["to"]!, "yyyyMMdd'T'HHmmss", CultureInfo.InvariantCulture);
         }
         var name = DemoData.Name(channel);
-        return new DemoVideoSource(_clockThread, options, channel, main, live, from, to, NameMasks(name), ClockMasks());
+        lock (Created) Created.Add((channel, live, main, options.WithAudio));
+        return new DemoVideoSource(_clockThread, options, channel, main, live, from, to, NameMasks(name), ClockMasks(), AudioSinkFactory);
     }
 
     TextMask[]? NameMasks(string name)
@@ -108,8 +116,19 @@ internal sealed class DemoFrameClock : IDisposable
 /// buffers at the requested size (never larger than the fake source size). Recorded playback honours Pause/Resume and
 /// ends at the requested end time.
 /// </summary>
-internal sealed unsafe class DemoVideoSource : IVideoSource
+internal sealed unsafe class DemoVideoSource : IVideoSource, IAudioSource
 {
+    const int ToneRate = 8000;   // like a G.711 camera
+
+    readonly bool _withAudio;
+    readonly Func<IAudioSink> _sinkFactory;
+    IAudioSink? _sink;
+    bool _sinkFailed;
+    bool _soundApplied;
+    volatile bool _soundOn;
+    long _toneSamples;           // samples written so far: keeps the beep pattern continuous
+    short[] _toneBuffer = [];
+
     sealed class Buffer
     {
         public byte* Ptr;
@@ -143,8 +162,10 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
     VideoState _state = VideoState.Idle;
 
     public DemoVideoSource(DemoFrameClock clock, VideoSourceOptions o, int channel, bool main, bool live, DateTime from, DateTime to,
-        TextMask[]? name, TextMask[][]? digits)
+        TextMask[]? name, TextMask[][]? digits, Func<IAudioSink> sinkFactory)
     {
+        _sinkFactory = sinkFactory;
+        _withAudio = o.WithAudio && channel != DemoData.SilentChannel;
         _clock = clock;
         _channel = channel;
         _live = live;
@@ -166,6 +187,66 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
     public VideoStats Stats { get; }
 
     public TimeSpan Position => TimeSpan.FromTicks(Interlocked.Read(ref _playedTicks));
+
+    // ---- Sound: a soft beep per camera (pitch = channel), 0.2 s every second, 8 kHz mono like a G.711 camera ----
+
+    public bool HasAudio => _withAudio;
+    public string? AudioError { get; private set; }
+    public event Action? AudioChanged;
+
+    public bool SoundOn
+    {
+        get => _soundOn;
+        set => _soundOn = value;
+    }
+
+    /// <summary>Called from Tick (the pacing thread, ~15 times a second): writes the tone for the elapsed time.</summary>
+    void PlayTone(long now)
+    {
+        var on = _soundOn && _withAudio;
+        if (on != _soundApplied)
+        {
+            _soundApplied = on;
+            if (_sinkFailed)
+            {
+                // A new attempt gets a new output (the failed one would still refuse).
+                try { _sink?.Dispose(); } catch (Exception) { }
+                _sink = null;
+                _sinkFailed = false;
+            }
+            _sink?.Flush();
+            if (!on && AudioError is not null) { AudioError = null; AudioChanged?.Invoke(); }
+        }
+        if (!on || _sinkFailed || _state != VideoState.Playing) return;
+        if (_sink is null)
+        {
+            _sink = _sinkFactory();
+            if (!_sink.Start(ToneRate, 1))
+            {
+                _sinkFailed = true;
+                AudioError = _sink.Error ?? "Máy không có loa hoặc tai nghe";
+                AudioChanged?.Invoke();
+                return;
+            }
+        }
+        // The first tick, or the first after a pause or a reconnect, writes one frame's worth instead of the whole gap.
+        var gap = now - _lastToneAt;
+        _lastToneAt = now;
+        var n = gap is > 0 && gap < DemoFrameClock.Frequency / 4 ? (int)(gap * ToneRate / DemoFrameClock.Frequency) : ToneRate / 15;
+        if (n <= 0) return;
+        if (_toneBuffer.Length < n) _toneBuffer = new short[n * 2];
+        var freq = 330 + _channel * 22;
+        for (var i = 0; i < n; i++)
+        {
+            var t = _toneSamples++;
+            var beep = t % ToneRate < ToneRate / 5;
+            var env = beep ? Math.Sin(Math.PI * (t % ToneRate) / (ToneRate / 5.0)) : 0;
+            _toneBuffer[i] = (short)(env * 0.12 * short.MaxValue * Math.Sin(2 * Math.PI * freq * t / ToneRate));
+        }
+        _sink.Write(_toneBuffer.AsSpan(0, n));
+    }
+
+    long _lastToneAt;
 
     public void Start()
     {
@@ -214,6 +295,8 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
                     return;
                 case VideoState.Paused:
                     _lastTick = now;
+                    _lastToneAt = 0;
+                    _sink?.Flush();
                     return;
                 case VideoState.Playing:
                     var played = _playedTicks + (now - _lastTick) * TimeSpan.TicksPerSecond / DemoFrameClock.Frequency;
@@ -233,6 +316,7 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
                         return;
                     }
                     Render(now);
+                    PlayTone(now);
                     return;
             }
         }
@@ -454,6 +538,8 @@ internal sealed unsafe class DemoVideoSource : IVideoSource
             }
             _palette = [];
             _paletteFor = 0;
+            try { _sink?.Dispose(); } catch (Exception) { }
+            _sink = null;
         }
     }
 }

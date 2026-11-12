@@ -41,6 +41,15 @@ internal static class CaptureMode
                     w.LivePage.ShowSingleWhenReady(1);
                     w.ShowLive();
                     break;
+                case "arrange":
+                    // Live view as arranged by the user: a saved Bộ, one big tile, a hidden camera, the camera panel open.
+                    w.ShowLive();
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.5, o.DelaySeconds / 2)));
+                    w.LivePage.TestPresets.TestAdd("Camera bãi xe cổng chính");
+                    w.LivePage.TestLayout(105);
+                    w.LivePage.TestHide(2);
+                    w.LivePage.TestSetDrawer(true);
+                    break;
                 case "playback":
                     w.ShowPlaybackTab();
                     break;

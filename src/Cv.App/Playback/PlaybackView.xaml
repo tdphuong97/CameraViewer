@@ -95,6 +95,7 @@
                 <Button app:Ui.Glyph="&#xE7A6;" Content="30 giây" ToolTip="Tới 30 giây" Click="OnForward30" MinHeight="44" />
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="SoundToggle" Margin="0,0,10,0" MinHeight="44" MinWidth="124" Click="OnSound" />
                 <Button x:Name="SnapshotButton" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh" Click="OnSnapshot" MinHeight="44" />
                 <Button x:Name="SaveVideoButton" Style="{StaticResource PrimaryButton}" app:Ui.Glyph="&#xE896;" Content="Trích xuất video"
                         MinHeight="44" Padding="20,0" Margin="10,0,0,0" ToolTip="Trích xuất một đoạn ghi hình ra file video MP4"

@@ -1,3 +1,12 @@
+## 0.9.6
+
+- Mới: nghe tiếng của camera. Màn xem lớn một camera và màn Xem lại có nút Bật tiếng, tắt sẵn mỗi lần mở phần mềm; lưới nhiều ô không có tiếng để máy nhẹ. Camera không gửi tiếng thì nút xám và ghi Không có tiếng (cần bật ghi tiếng trên camera hoặc đầu ghi).
+- Mới: bố cục thêm lưới 6, 8, 12 ô và ba kiểu một ô lớn kèm các ô nhỏ (1+5, 1+7, 1+12). Nút Bố cục mở danh sách có hình mẫu; Tự động chọn số ô như trước.
+- Mới: nút Camera ở góc dưới bên phải mở danh sách camera, kéo một camera thả vào ô (kể cả camera ở trang khác hoặc ô trống).
+- Mới: ẩn camera không cần xem khỏi màn Trực tiếp (nút con mắt gạch chéo trên ô, có Hoàn tác; Hiện lại trong danh sách camera). Xem lại vẫn thấy đủ camera.
+- Mới: Bộ sắp xếp có tên, ví dụ Trực đêm: lưu bố cục, thứ tự và camera ẩn, chuyển bằng nút Bộ ở thanh dưới. Mọi chỉnh sửa tự lưu vào bộ đang chọn; bộ Mặc định là cách sắp xếp đang dùng.
+- Hướng dẫn sử dụng cập nhật các phần trên.
+
 ## 0.9.5
 
 - Mới: Có người ở màn Xem lại. Nút cạnh thanh thời gian cho biết số lượt camera thấy có người trong ngày; bấm vào để xem ảnh từng lượt (ảnh đầu ghi chụp), bấm ảnh để xem lại đúng lúc đó. Những lúc có người hiện thành vạch xanh lá trên thanh thời gian. Dùng sẵn phát hiện người của camera và đầu ghi, không tốn thêm bộ nhớ máy tính.

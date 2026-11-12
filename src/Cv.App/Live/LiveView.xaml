@@ -8,6 +8,10 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
 
         <!-- Grid of cameras -->
         <Grid x:Name="TileGrid" Margin="6,6,6,4" />
@@ -28,12 +32,16 @@
                 <TextBlock x:Name="SingleName" Grid.Column="1" FontSize="18" FontWeight="SemiBold" Margin="18,0" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="SingleSound" MinWidth="124" Margin="0,0,8,0" Click="OnSingleSound" />
                     <Button app:Ui.Glyph="&#xE81C;" Content="Xem lại" Click="OnSinglePlayback" />
                     <Button x:Name="SingleSnapshot" app:Ui.Glyph="&#xE722;" Content="Chụp ảnh" Margin="8,0,0,0" Click="OnSingleSnapshot" />
                 </StackPanel>
             </Grid>
             <live:CameraTile x:Name="SingleTile" Grid.Row="1" Margin="14,0,14,14" IsSingle="True" />
         </Grid>
+
+        <!-- Camera panel: drag a camera onto a tile -->
+        <live:CameraDrawer x:Name="Drawer" Grid.Column="1" Visibility="Collapsed" />
 
         <!-- Loading / error / not configured -->
         <Border x:Name="MessagePanel" Style="{StaticResource Card}" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -44,14 +52,15 @@
                 <TextBlock x:Name="MessageTitle" Style="{StaticResource H2}" HorizontalAlignment="Center" Margin="0,14,0,6" />
                 <TextBlock x:Name="MessageText" Style="{StaticResource Muted}" FontSize="14" TextAlignment="Center" />
                 <StackPanel x:Name="MessageButtons" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <Button app:Ui.Glyph="&#xE72C;" Content="Thử lại" Click="OnRetry" />
-                    <Button app:Ui.Glyph="&#xE713;" Content="Mở Cài đặt" Margin="8,0,0,0" Click="OnOpenSettings" />
+                    <Button x:Name="RetryButton" app:Ui.Glyph="&#xE72C;" Content="Thử lại" Click="OnRetry" />
+                    <Button x:Name="SettingsButton" app:Ui.Glyph="&#xE713;" Content="Mở Cài đặt" Margin="8,0,0,0" Click="OnOpenSettings" />
+                    <Button x:Name="OpenDrawerButton" app:Ui.Glyph="&#xE714;" Content="Mở danh sách camera" Visibility="Collapsed" Click="OnDrawerClick" />
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- Bottom bar: count, layout, pages -->
-        <Border x:Name="BottomBar" Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+        <Border x:Name="BottomBar" Grid.Row="1" Grid.ColumnSpan="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,1,0,0" Padding="18,7">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -61,17 +70,21 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="CountText" Style="{StaticResource Muted}" VerticalAlignment="Center" FontSize="13.5" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock Text="Bố cục" Style="{StaticResource Muted}" FontSize="13.5" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Border Style="{StaticResource SegmentGroup}">
-                        <StackPanel x:Name="LayoutButtons" Orientation="Horizontal" />
-                    </Border>
+                    <TextBlock Text="Bố cục" Style="{StaticResource Muted}" FontSize="13.5" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <live:LayoutPicker x:Name="LayoutPick" />
+                    <TextBlock Text="Bộ" Style="{StaticResource Muted}" FontSize="13.5" VerticalAlignment="Center" Margin="22,0,10,0" />
+                    <live:PresetMenu x:Name="Presets" />
                 </StackPanel>
-                <StackPanel x:Name="Pager" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
-                    <Button x:Name="PrevPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76B;" ToolTip="Trang trước"
-                            Click="OnPrevPage" />
-                    <TextBlock x:Name="PageText" VerticalAlignment="Center" Margin="10,0" Foreground="{StaticResource SubtleBrush}" />
-                    <Button x:Name="NextPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76C;" ToolTip="Trang sau"
-                            Click="OnNextPage" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <StackPanel x:Name="Pager" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,14,0">
+                        <Button x:Name="PrevPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76B;" ToolTip="Trang trước"
+                                Click="OnPrevPage" />
+                        <TextBlock x:Name="PageText" VerticalAlignment="Center" Margin="10,0" Foreground="{StaticResource SubtleBrush}" />
+                        <Button x:Name="NextPage" Style="{StaticResource IconButton}" app:Ui.Glyph="&#xE76C;" ToolTip="Trang sau"
+                                Click="OnNextPage" />
+                    </StackPanel>
+                    <Button x:Name="DrawerButton" app:Ui.Glyph="&#xE714;" Content="Camera" MinHeight="32" ToolTip="Danh sách camera: kéo một camera thả vào khung"
+                            Click="OnDrawerClick" />
                 </StackPanel>
             </Grid>
         </Border>

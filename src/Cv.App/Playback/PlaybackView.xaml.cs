@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Cv.App.Logic;
 using Cv.Core;
 using Cv.Core.Nvr;
+using Cv.Core.Video;
 
 namespace Cv.App.Playback;
 
@@ -162,6 +163,7 @@ public partial class PlaybackView : UserControl, IPage
         Ui.SetGlyph(PlayButton, playing || _ctrl.Status == PlaybackStatus.Loading ? Glyphs.Pause : Glyphs.Play);
         PlayButton.ToolTip = playing ? "Tạm dừng" : "Phát";
         SnapshotButton.IsEnabled = _ctrl.Status is PlaybackStatus.Playing or PlaybackStatus.Paused && Video.HasFrame;
+        Controls.SoundButton.Refresh(SoundToggle, _ctrl.Source, _s.SoundOn);
         switch (_ctrl.Status)
         {
             case PlaybackStatus.Idle:
@@ -287,6 +289,18 @@ public partial class PlaybackView : UserControl, IPage
     {
         if (_ctrl.Camera is { } cam) _ = _shell.SnapshotAsync(_ctrl.Source, cam.Name, _ctrl.Position);
     }
+
+    void OnSound(object sender, RoutedEventArgs e)
+    {
+        Controls.SoundButton.Toggle(_s, _ctrl.Source);
+        Controls.SoundButton.Refresh(SoundToggle, _ctrl.Source, _s.SoundOn);
+        if (_ctrl.Source is IAudioSource { SoundOn: true, AudioError: { } err }) _shell.Toast(err, ToastKind.Warn);
+    }
+
+    // Selftest hooks: the speaker button as the user sees it.
+    internal string TestSoundText => (string)SoundToggle.Content;
+    internal bool TestSoundEnabled => SoundToggle.IsEnabled;
+    internal void TestToggleSound() => OnSound(this, new RoutedEventArgs());
 
     void OnKey(object sender, KeyEventArgs e)
     {

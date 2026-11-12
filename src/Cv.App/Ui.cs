@@ -47,6 +47,8 @@ public static class Glyphs
     public const string Refresh = "";
     public const string Warning = "";
     public const string Error = "";
+    public const string Volume = "";
+    public const string Mute = "";
     public const string Check = "";
     public const string Completed = "";
     public const string Sync = "";

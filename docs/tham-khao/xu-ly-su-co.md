@@ -28,6 +28,9 @@ Tìm hiện tượng hoặc đúng câu phần mềm báo trong bảng. Cột **
 | **Ổ đĩa đầy** | Ổ chứa thư mục video hết chỗ | Xoá hoặc chuyển bớt video cũ, rồi **Thử lại** | Người xem |
 | **Không thấy người nào trong ngày này.** dù có người qua lại | Camera chưa bật nhận người: phát hiện chuyển động đang tắt, vùng phát hiện chưa vẽ, hoặc mục tiêu chưa chọn người | Trên trang web của đầu ghi, mở phần phát hiện chuyển động của kênh đó (thường ở Cấu hình > Sự kiện; tên mục có thể khác theo firmware): bật, vẽ vùng, chọn mục tiêu **Người** (Human). Chạy chẩn đoán để xem kênh nào đã có lượt có người | IT |
 | Không có nút **Có người** | Đầu ghi không cho tìm sự kiện có người (đời cũ hoặc hãng khác) | Không cần làm gì; xem lại và trích xuất video vẫn bình thường | IT |
+| Nút tiếng xám, ghi **Không có tiếng** (xem lớn hoặc xem lại) | Camera không gửi tiếng: tiếng chưa được bật trên camera hoặc đầu ghi (kiểu luồng phải là Video & Audio), hoặc camera không có micro. Đoạn ghi từ trước lúc bật tiếng cũng không có tiếng | Bật ghi tiếng cho kênh đó trên trang web của đầu ghi hoặc camera, rồi xem lại đoạn mới ghi | IT |
+| Bấm **Bật tiếng** mà vẫn im, có báo **Máy không có loa hoặc tai nghe** | Máy không có loa, tai nghe, hoặc đang điều khiển từ xa nên không có thiết bị âm thanh | Cắm loa hoặc tai nghe; kiểm tra Windows có thiết bị phát âm thanh; âm lượng không bị tắt | Người xem, rồi IT |
+| Bật tiếng nhưng không nghe gì, nút không báo lỗi | Âm lượng Windows thấp hoặc đang tắt, hoặc camera chỉ truyền im lặng | Chỉnh âm lượng Windows; thử camera khác để so | Người xem |
 | Video lưu ra không có tiếng | Camera không thu tiếng, hoặc thu tiếng kiểu G.711 mà file MP4 không chứa được | Bình thường với đa số camera; hình vẫn đầy đủ | |
 
 ## Kết nối đầu ghi (bộ phận IT)

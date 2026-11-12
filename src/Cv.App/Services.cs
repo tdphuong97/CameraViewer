@@ -212,9 +212,19 @@ public sealed class Services : IDisposable
         }
     }
 
-    /// <summary>A video source with the user's decoding choice.</summary>
-    public IVideoSource CreateSource(string url, bool live, (int W, int H) target) =>
-        Video.Create(new VideoSourceOptions
+    /// <summary>
+    /// The sound switch of the speaker button, shared by single view and Xem lại. Off at every start (a lobby camera must
+    /// not speak when the window opens); once turned on it stays on while the app runs.
+    /// </summary>
+    public bool SoundOn { get; set; }
+
+    /// <summary>
+    /// A video source with the user's decoding choice. <paramref name="withAudio"/> only for single view and playback
+    /// (the grid never takes sound); the source then follows <see cref="SoundOn"/> from the start.
+    /// </summary>
+    public IVideoSource CreateSource(string url, bool live, (int W, int H) target, bool withAudio = false)
+    {
+        var src = Video.Create(new VideoSourceOptions
         {
             Url = url,
             IsLive = live,
@@ -222,7 +232,11 @@ public sealed class Services : IDisposable
             TargetWidth = target.W,
             TargetHeight = target.H,
             Reconnect = live,
+            WithAudio = withAudio,
         });
+        if (withAudio && src is IAudioSource a) a.SoundOn = SoundOn;
+        return src;
+    }
 
     public void Dispose()
     {

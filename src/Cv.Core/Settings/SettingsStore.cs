@@ -117,6 +117,8 @@ public sealed class SettingsStore(string filePath) : ISettingsStore
         }
     }
 
+    private static List<CameraRef> CleanRefs(List<CameraRef>? refs) => (refs ?? []).Where(c => c is not null && c.NvrId is not null).ToList();
+
     /// <summary>Nulls written by hand or older versions become defaults.</summary>
     private static AppSettings Normalize(AppSettings s)
     {
@@ -127,7 +129,13 @@ public sealed class SettingsStore(string filePath) : ISettingsStore
             Host = n.Host ?? "",
             User = n.User ?? "",
         }).ToList();
-        s.LiveOrder = (s.LiveOrder ?? []).Where(c => c is not null && c.NvrId is not null).ToList();
+        s.LiveOrder = CleanRefs(s.LiveOrder);
+        s.LiveHidden = CleanRefs(s.LiveHidden);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { AppSettings.DefaultArrangementName };
+        s.LivePresets = (s.LivePresets ?? []).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => { p.Name = p.Name.Trim(); p.Order = CleanRefs(p.Order); p.Hidden = CleanRefs(p.Hidden); return p; })
+            .Where(p => seen.Add(p.Name)).ToList();
+        s.LivePreset = s.LivePresets.Any(p => p.Name == s.LivePreset) ? s.LivePreset : "";
         if (string.IsNullOrWhiteSpace(s.ExportFolder)) s.ExportFolder = AppSettings.DefaultExportFolder;
         if (string.IsNullOrWhiteSpace(s.SnapshotFolder)) s.SnapshotFolder = AppSettings.DefaultSnapshotFolder;
         return s;

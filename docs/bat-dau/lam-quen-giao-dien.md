@@ -15,9 +15,9 @@ Mở phần mềm bằng biểu tượng **Camera Viewer** ngoài màn hình. Ph
 | 3 | Dấu hỏi **Hướng dẫn sử dụng** | Mở tài liệu này trong một cửa sổ riêng, đúng trang về màn hình đang xem. Nhấn phím `F1` cũng được. |
 | 4 | Bánh răng **Cài đặt** | Dành cho bộ phận IT. Người xem camera không cần vào. |
 | 5 | Ô camera | Hình camera, tên camera ở góc dưới bên trái. |
-| 6 | Các nút trên ô camera | Hiện khi để chuột lên ô: **Xem lại**, **Chụp ảnh**, **Phóng to**. |
+| 6 | Các nút trên ô camera | Hiện khi để chuột lên ô: **Xem lại**, **Chụp ảnh**, **Phóng to**, **Ẩn**. |
 | 7 | Ô camera đang tắt | Camera không hoạt động. Xem bảng dưới. |
-| 8 | **Bố cục** | Chọn số ô trên màn hình. Thường để **Tự động**. |
+| 8 | **Bố cục**, **Bộ** và **Camera** | **Bố cục** chọn cách chia ô (thường để **Tự động**). **Bộ** lưu và chuyển giữa các cách sắp xếp. **Camera** mở danh sách camera để kéo vào ô. Xem [Xem tất cả camera](../xem-camera/xem-tat-ca-camera.md). |
 
 ## Ô camera báo gì
 

@@ -22,4 +22,10 @@
     <ProjectReference Include="..\..\src\Cv.Core\Cv.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Pure live-view logic that sits in Cv.App (WPF), linked here so it is tested without a window. -->
+    <Compile Include="..\..\src\Cv.App\Logic\GridLayout.cs" Link="Linked\GridLayout.cs" />
+    <Compile Include="..\..\src\Cv.App\Logic\LiveArrangements.cs" Link="Linked\LiveArrangements.cs" />
+  </ItemGroup>
+
 </Project>

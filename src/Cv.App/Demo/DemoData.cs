@@ -10,6 +10,9 @@ internal static class DemoData
     /// <summary>Channel that drops its live stream for a few seconds now and then (shows the reconnect overlay).</summary>
     public const int FlakyChannel = 11;
 
+    /// <summary>Camera whose stream has no sound track (shows the disabled sound button); every other demo camera beeps.</summary>
+    public const int SilentChannel = 3;
+
     static readonly string[] Names =
     [
         "Cổng chính", "Sảnh tầng 1", "Hầm xe B1", "Hầm xe B2", "Thang máy 1", "Thang máy 2", "Hành lang tầng 2",
